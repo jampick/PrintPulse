@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Generated output
+*.svg
+*.wav
+
+# Environment / secrets
+.env
+.env.*
+
+# User config (created at runtime)
+# ~/.printpulse/ is in user home, not in repo
+
+# Test artifacts
+test_*.txt
+test_*.svg
+
+# Planning docs (not for repo)
+PLAN.md

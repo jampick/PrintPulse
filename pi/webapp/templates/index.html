@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrintPulse Appliance</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0a0a0a;
+            color: #33ff33;
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.6em;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px #33ff33;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #1a8a1a;
+            margin-bottom: 25px;
+            font-size: 0.85em;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 25px;
+            padding: 10px;
+            border: 1px solid #1a4a1a;
+            background: #0d0d0d;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot-green { background: #33ff33; box-shadow: 0 0 6px #33ff33; }
+        .dot-red { background: #ff3333; box-shadow: 0 0 6px #ff3333; }
+        .dot-yellow { background: #ffff33; box-shadow: 0 0 6px #ffff33; }
+
+        .panel {
+            border: 2px solid #1a4a1a;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #0d0d0d;
+        }
+
+        .panel-title {
+            color: #33ff33;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #1a4a1a;
+        }
+
+        label {
+            display: block;
+            color: #1aaa1a;
+            margin-bottom: 4px;
+            font-size: 0.85em;
+        }
+
+        textarea, input, select {
+            width: 100%;
+            background: #111;
+            color: #33ff33;
+            border: 1px solid #1a4a1a;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        textarea { height: 120px; resize: vertical; }
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #33ff33;
+            box-shadow: 0 0 5px #1a4a1a;
+        }
+
+        .row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .row > div { flex: 1; }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button {
+            background: #111;
+            color: #33ff33;
+            border: 2px solid #33ff33;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        button:hover {
+            background: #33ff33;
+            color: #0a0a0a;
+        }
+
+        .btn-save { border-color: #33ff33; }
+        .btn-start { border-color: #33aaff; color: #33aaff; }
+        .btn-start:hover { background: #33aaff; color: #0a0a0a; }
+        .btn-stop { border-color: #ff3333; color: #ff3333; }
+        .btn-stop:hover { background: #ff3333; color: #0a0a0a; }
+
+        .help {
+            color: #0d5a0d;
+            font-size: 0.75em;
+            margin-top: -10px;
+            margin-bottom: 15px;
+        }
+
+        .footer {
+            text-align: center;
+            color: #1a4a1a;
+            font-size: 0.75em;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 600px) {
+            .row { flex-direction: column; gap: 0; }
+            .status-bar { flex-direction: column; gap: 10px; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+    <h1>[ PRINTPULSE ]</h1>
+    <div class="subtitle">Appliance Configuration</div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="dot" id="svc-dot"
+                  {% if status == 'active' %}class="dot dot-green"
+                  {% elif status == 'failed' %}class="dot dot-red"
+                  {% else %}class="dot dot-yellow"{% endif %}></span>
+            <span>Watcher: <strong id="svc-text">{{ status }}</strong></span>
+        </div>
+        <div class="status-item">
+            <span class="dot {% if printer_ok %}dot-green{% else %}dot-red{% endif %}"
+                  id="prt-dot"></span>
+            <span>Printer: <strong id="prt-text">{% if printer_ok %}connected{% else %}not found{% endif %}</strong></span>
+        </div>
+    </div>
+
+    <!-- Config Form -->
+    <form action="/save" method="post">
+        <div class="panel">
+            <div class="panel-title">// RSS FEEDS</div>
+            <label for="feeds">Feed URLs (one per line):</label>
+            <textarea name="feeds" id="feeds">{{ feeds_text }}</textarea>
+            <div class="help">Examples: https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml</div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">// SETTINGS</div>
+            <div class="row">
+                <div>
+                    <label for="interval">Poll interval (seconds):</label>
+                    <input type="number" name="interval" id="interval"
+                           value="{{ config.interval }}" min="60" max="3600">
+                </div>
+                <div>
+                    <label for="max_prints">Max prints per cycle:</label>
+                    <input type="number" name="max_prints" id="max_prints"
+                           value="{{ config.max_prints }}" min="1" max="20">
+                </div>
+            </div>
+            <div class="row">
+                <div>
+                    <label for="theme">Theme:</label>
+                    <select name="theme" id="theme">
+                        <option value="green" {% if config.theme == 'green' %}selected{% endif %}>Green</option>
+                        <option value="amber" {% if config.theme == 'amber' %}selected{% endif %}>Amber</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="printer_device">Printer device:</label>
+                    <input type="text" name="printer_device" id="printer_device"
+                           value="{{ config.printer_device }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button type="submit" class="btn-save">[ SAVE & RESTART ]</button>
+        </div>
+    </form>
+
+    <!-- Service Controls -->
+    <div class="panel" style="margin-top: 20px;">
+        <div class="panel-title">// SERVICE CONTROL</div>
+        <div class="btn-row">
+            <form action="/start" method="post" style="flex:1;display:flex;">
+                <button type="submit" class="btn-start" style="flex:1;">[ START ]</button>
+            </form>
+            <form action="/stop" method="post" style="flex:1;display:flex;">
+                <button type="submit" class="btn-stop" style="flex:1;">[ STOP ]</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="footer">
+        PrintPulse Appliance &mdash; Raspberry Pi Zero
+    </div>
+
+    <!-- Live status polling -->
+    <script>
+        setInterval(function() {
+            fetch('/status')
+                .then(r => r.json())
+                .then(data => {
+                    var svcDot = document.getElementById('svc-dot');
+                    var svcText = document.getElementById('svc-text');
+                    var prtDot = document.getElementById('prt-dot');
+                    var prtText = document.getElementById('prt-text');
+
+                    svcText.textContent = data.service;
+                    svcDot.className = 'dot ' + (
+                        data.service === 'active' ? 'dot-green' :
+                        data.service === 'failed' ? 'dot-red' : 'dot-yellow'
+                    );
+
+                    prtText.textContent = data.printer ? 'connected' : 'not found';
+                    prtDot.className = 'dot ' + (data.printer ? 'dot-green' : 'dot-red');
+                })
+                .catch(function() {});
+        }, 5000);
+    </script>
+</body>
+</html>

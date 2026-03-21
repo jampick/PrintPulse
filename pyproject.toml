@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "printpulse"
+version = "0.1.0"
+description = "PrintPulse: voice-to-print for AxiDraw pen plotters and thermal printers"
+requires-python = ">=3.9"
+dependencies = [
+    "openai-whisper",
+    "Hershey-Fonts",
+    "svgwrite",
+    "sounddevice",
+    "soundfile",
+    "numpy",
+    "rich",
+    "feedparser",
+    "Pillow",
+    "requests",
+    "openai",
+]
+
+[project.optional-dependencies]
+plotter = []  # pyaxidraw installed manually from https://cdn.evilmadscientist.com/dl/ad/public/AxiDraw_API.zip
+optimize = ["vpype"]
+thermal = ["pywin32"]  # Windows only — for Rongta/ESC-POS thermal printers
+illustrations = ["vtracer"]  # DALL-E image tracing — auto-installed if missing
+pi = ["flask"]  # Raspberry Pi appliance web config UI
+
+[project.scripts]
+printpulse = "printpulse.__main__:main"

@@ -1,0 +1,26 @@
+{
+  "name": "victorian",
+  "header": {
+    "prefix": "FROM THE DESK OF",
+    "name": "James Pickard",
+    "title": "Mechanical Explorer & Adventurer",
+    "font": "scripts",
+    "font_size": 20.0,
+    "frame_style": "ornamental"
+  },
+  "corner_ornaments": "gears",
+  "body_font": "futural",
+  "body_font_size": 12.0,
+  "illustrations": {
+    "hero": {
+      "enabled": false,
+      "max_height_in": 2.5,
+      "position": "top"
+    },
+    "supporting": {
+      "enabled": false,
+      "max_height_in": 1.5,
+      "position": "inline_right"
+    }
+  }
+}

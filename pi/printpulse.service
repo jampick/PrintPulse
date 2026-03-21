@@ -1,0 +1,19 @@
+[Unit]
+Description=PrintPulse News Watcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/home/pi/printpulse-venv/bin/python -m printpulse.pi_launcher
+WorkingDirectory=/home/pi/PrintPulse
+Restart=on-failure
+RestartSec=10
+Environment=HOME=/home/pi
+Environment=PYTHONPATH=/home/pi/PrintPulse
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

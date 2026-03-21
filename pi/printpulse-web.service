@@ -1,0 +1,19 @@
+[Unit]
+Description=PrintPulse Web Config UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/home/pi/printpulse-venv/bin/python /home/pi/PrintPulse/pi/webapp/server.py
+WorkingDirectory=/home/pi/PrintPulse
+Restart=on-failure
+RestartSec=5
+Environment=HOME=/home/pi
+Environment=PYTHONPATH=/home/pi/PrintPulse
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
