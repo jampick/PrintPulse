@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from printpulse import ui
+from printpulse.secure_fs import secure_makedirs, secure_write_json
 
 # ─── Paths ────────────────────────────────────────────────────────────────────
 
@@ -127,7 +128,7 @@ class StationeryProfile:
 
 def _ensure_user_dir():
     """Create user stationery dir and seed with bundled profiles if empty."""
-    os.makedirs(STATIONERY_DIR, exist_ok=True)
+    secure_makedirs(STATIONERY_DIR)
     # Copy bundled profiles that don't already exist in user dir
     if os.path.isdir(BUNDLED_DIR):
         for fname in os.listdir(BUNDLED_DIR):
@@ -180,5 +181,4 @@ def save_profile(profile: StationeryProfile):
     """Save a profile to the user stationery directory."""
     _ensure_user_dir()
     path = os.path.join(STATIONERY_DIR, f"{profile.name}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(profile.to_dict(), f, indent=2, ensure_ascii=False)
+    secure_write_json(path, profile.to_dict())

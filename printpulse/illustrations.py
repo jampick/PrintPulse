@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from printpulse import ui
+from printpulse.secure_fs import secure_makedirs
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ def _cache_get(key: str) -> Optional[str]:
 
 
 def _cache_put(key: str, svg_data: str):
-    os.makedirs(CACHE_DIR, exist_ok=True)
+    secure_makedirs(CACHE_DIR)
     path = os.path.join(CACHE_DIR, f"{key}.svg")
     with open(path, "w", encoding="utf-8") as f:
         f.write(svg_data)
@@ -113,7 +114,7 @@ def _cache_image_get(key: str) -> Optional[bytes]:
 
 def _cache_image_put(key: str, image_bytes: bytes):
     """Cache a DALL-E raster image."""
-    os.makedirs(CACHE_DIR, exist_ok=True)
+    secure_makedirs(CACHE_DIR)
     path = os.path.join(CACHE_DIR, f"{key}.png")
     with open(path, "wb") as f:
         f.write(image_bytes)
@@ -325,7 +326,7 @@ def _trace_image_to_svg_with_params(
     from printpulse import ensure_dependency
     vtracer = ensure_dependency("vtracer")
 
-    os.makedirs(CACHE_DIR, exist_ok=True)
+    secure_makedirs(CACHE_DIR)
     tmp_in = None
     tmp_out = None
     try:

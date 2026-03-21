@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 
 from printpulse import ui
+from printpulse.secure_fs import secure_write_json
 
 SEEN_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_seen.json")
 
@@ -21,8 +22,11 @@ def _load_seen() -> dict:
 
 
 def _save_seen(seen: dict):
-    with open(SEEN_FILE, "w", encoding="utf-8") as f:
-        json.dump({"ids": list(seen["ids"]), "titles": list(seen["titles"])}, f, ensure_ascii=False)
+    secure_write_json(
+        SEEN_FILE,
+        {"ids": list(seen["ids"]), "titles": list(seen["titles"])},
+        indent=0,
+    )
 
 
 def fetch_new_items(feed_url: str, max_items: int = 3) -> list[dict]:

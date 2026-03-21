@@ -9,6 +9,8 @@ import json
 import os
 import secrets
 
+from printpulse.secure_fs import secure_write_json
+
 CONFIG_PATH = os.path.expanduser("~/.printpulse_appliance.json")
 
 
@@ -46,22 +48,7 @@ def load_config() -> dict:
 
 def save_config(data: dict) -> None:
     """Write appliance config to disk with secure permissions."""
-    config_dir = os.path.dirname(CONFIG_PATH)
-    os.makedirs(config_dir, exist_ok=True)
-    # Secure directory permissions (owner only)
-    try:
-        os.chmod(config_dir, 0o700)
-    except OSError:
-        pass
-
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-
-    # Secure file permissions (owner read/write only)
-    try:
-        os.chmod(CONFIG_PATH, 0o600)
-    except OSError:
-        pass
+    secure_write_json(CONFIG_PATH, data)
 
 
 def hash_password(password: str) -> str:

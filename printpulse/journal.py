@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 
 from printpulse.config import Config
+from printpulse.secure_fs import secure_write_json
 
 DEFAULT_JOURNAL_PATH = os.path.join(os.path.expanduser("~"), ".printpulse_journal.json")
 
@@ -17,8 +18,7 @@ def _load_state(journal_path: str) -> dict:
 
 def _save_state(state: dict, journal_path: str):
     """Save journal state to disk."""
-    with open(journal_path, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2, ensure_ascii=False)
+    secure_write_json(journal_path, state)
 
 
 def get_next_line(journal_path: str = DEFAULT_JOURNAL_PATH) -> int:
