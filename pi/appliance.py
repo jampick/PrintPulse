@@ -4,8 +4,10 @@ Reads and writes ~/.printpulse_appliance.json — the bridge between
 the Flask web UI and the systemd watch service.
 """
 
+import hashlib
 import json
 import os
+import secrets
 
 CONFIG_PATH = os.path.expanduser("~/.printpulse_appliance.json")
 
@@ -21,6 +23,9 @@ def default_config() -> dict:
         "theme": "green",
         "printer_device": "/dev/usb/lp0",
         "enabled": True,
+        "auth_user": "",
+        "auth_hash": "",
+        "secret_key": "",
     }
 
 
@@ -40,7 +45,44 @@ def load_config() -> dict:
 
 
 def save_config(data: dict) -> None:
-    """Write appliance config to disk."""
-    os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
+    """Write appliance config to disk with secure permissions."""
+    config_dir = os.path.dirname(CONFIG_PATH)
+    os.makedirs(config_dir, exist_ok=True)
+    # Secure directory permissions (owner only)
+    try:
+        os.chmod(config_dir, 0o700)
+    except OSError:
+        pass
+
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
+
+    # Secure file permissions (owner read/write only)
+    try:
+        os.chmod(CONFIG_PATH, 0o600)
+    except OSError:
+        pass
+
+
+def hash_password(password: str) -> str:
+    """Hash a password with a random salt using SHA-256.
+
+    Returns 'salt:hash' string for storage.
+    """
+    salt = secrets.token_hex(16)
+    h = hashlib.sha256(f"{salt}:{password}".encode()).hexdigest()
+    return f"{salt}:{h}"
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verify a password against a stored 'salt:hash' string."""
+    if ":" not in stored_hash:
+        return False
+    salt, expected = stored_hash.split(":", 1)
+    h = hashlib.sha256(f"{salt}:{password}".encode()).hexdigest()
+    return secrets.compare_digest(h, expected)
+
+
+def generate_secret_key() -> str:
+    """Generate a random secret key for Flask sessions/CSRF."""
+    return secrets.token_hex(32)

@@ -123,18 +123,45 @@ sudo systemctl daemon-reload
 sudo systemctl enable printpulse printpulse-web
 echo "  Services enabled (will start on boot)"
 
-# ── 7. Create default config and start ───────────────────────────
-echo "[7/7] Creating default configuration..."
+# ── 7. Create config and set up web UI credentials ──────────────
+echo "[7/7] Setting up configuration and credentials..."
+echo ""
+echo "  The web UI requires a username and password."
+echo "  You'll use these to log in from your phone/laptop."
+echo ""
+
+# Prompt for web UI credentials
+read -p "  Choose a web UI username: " WEB_USER
+while [ -z "$WEB_USER" ]; do
+    read -p "  Username cannot be empty. Try again: " WEB_USER
+done
+
+read -s -p "  Choose a web UI password: " WEB_PASS
+echo ""
+while [ -z "$WEB_PASS" ]; do
+    read -s -p "  Password cannot be empty. Try again: " WEB_PASS
+    echo ""
+done
+
+# Create config with hashed credentials
 python3 -c "
 import sys
 sys.path.insert(0, '$PP_HOME/PrintPulse')
-from pi.appliance import save_config, default_config, CONFIG_PATH
+from pi.appliance import save_config, load_config, default_config, hash_password, generate_secret_key, CONFIG_PATH
 import os
-if not os.path.isfile(CONFIG_PATH):
-    save_config(default_config())
-    print('  Default config created')
+
+if os.path.isfile(CONFIG_PATH):
+    config = load_config()
+    print('  Existing config found, updating credentials...')
 else:
-    print('  Config already exists, keeping it')
+    config = default_config()
+    print('  Creating new config...')
+
+config['auth_user'] = '$WEB_USER'
+config['auth_hash'] = hash_password('$WEB_PASS')
+config['secret_key'] = generate_secret_key()
+save_config(config)
+print('  Credentials saved (password hashed, not stored in plaintext)')
 "
 
 # Start the services
