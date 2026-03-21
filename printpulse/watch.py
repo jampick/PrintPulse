@@ -1,10 +1,13 @@
 import json
+import logging
 import os
 import time
 from datetime import datetime
 
 from printpulse import ui
 from printpulse.secure_fs import secure_write_json
+
+logger = logging.getLogger("printpulse.watch")
 
 SEEN_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_seen.json")
 
@@ -75,7 +78,8 @@ def fetch_new_items_multi(feed_urls: list[str], max_items: int = 3) -> list[dict
             items = fetch_new_items(url, max_items)
             all_items.extend(items)
         except Exception as e:
-            ui.error_panel(f"Feed error ({url}): {e}", "green")
+            logger.error("Feed fetch failed for %s: %s", url, e)
+            ui.error_panel("Feed error: could not fetch feed.", "green")
     return all_items
 
 
@@ -118,8 +122,8 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                     seen["ids"].add(entry_id)
                     if title:
                         seen["titles"].add(title)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Error seeding seen items for %s: %s", feed_url, e)
         _save_seen(seen)
         ui.success_message(
             f"First run: top {skip} story(ies) per feed will print now. "
@@ -145,8 +149,9 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                 try:
                     items = fetch_new_items_multi(feed_urls, max_prints)
                 except Exception as e:
+                    logger.error("Feed poll failed: %s", e)
                     live.update(RText(
-                        f"  [{now}] Feed error: {e}",
+                        f"  [{now}] Feed error — check logs for details",
                         style=t["error"],
                     ))
                     # Wait then retry
@@ -197,7 +202,8 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                             plot_callback(title, feed_item=item)
                             mark_seen([item])
                         except Exception as e:
-                            ui.error_panel(f"Plot error: {e}", theme)
+                            logger.error("Plot/print error: %s", e)
+                            ui.error_panel("Plot error — check logs for details.", theme)
 
                     # Resume Live for the next idle countdown
                     live.start()

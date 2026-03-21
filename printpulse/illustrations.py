@@ -21,8 +21,12 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Optional
 
+import logging
+
 from printpulse import ui
 from printpulse.secure_fs import secure_makedirs
+
+logger = logging.getLogger("printpulse.illustrations")
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -686,7 +690,8 @@ def _generate_dalle_image(
         return resp.content
 
     except Exception as e:
-        ui.error_panel(f"DALL-E image generation failed: {e}", theme)
+        logger.error("DALL-E image generation failed: %s", e)
+        ui.error_panel("Image generation failed — check logs for details.", theme)
         return None
 
 
@@ -767,7 +772,8 @@ def _qa_vision_call(
         return (min(max(score, 1), 10), feedback)
 
     except Exception as e:
-        return (5, f"QA evaluation failed: {e}")
+        logger.error("QA evaluation failed: %s", e)
+        return (5, "QA evaluation failed — check logs for details.")
 
 
 # ─── Path-to-Raster Preview Rendering ───────────────────────────────────────

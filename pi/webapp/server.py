@@ -15,6 +15,7 @@ Security features:
 
 import functools
 import ipaddress
+import logging
 import os
 import re
 import secrets
@@ -22,6 +23,8 @@ import subprocess
 import sys
 import time
 from urllib.parse import urlparse
+
+logger = logging.getLogger("printpulse.webapp")
 
 # Add project root to path
 _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -298,7 +301,8 @@ def _service_status() -> str:
             capture_output=True, text=True, timeout=5,
         )
         return result.stdout.strip()
-    except Exception:
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.warning("Failed to check service status: %s", type(exc).__name__)
         return "unknown"
 
 
@@ -364,8 +368,9 @@ def save():
             ["sudo", "systemctl", "restart", "printpulse"],
             timeout=10,
         )
-    except Exception:
-        pass
+        logger.info("Config saved and watcher service restarted.")
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.error("Failed to restart watcher service: %s", type(exc).__name__)
 
     return redirect(url_for("index"))
 
@@ -379,8 +384,9 @@ def start():
 
     try:
         subprocess.run(["sudo", "systemctl", "start", "printpulse"], timeout=10)
-    except Exception:
-        pass
+        logger.info("Watcher service started.")
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.error("Failed to start watcher service: %s", type(exc).__name__)
     return redirect(url_for("index"))
 
 
@@ -393,8 +399,9 @@ def stop():
 
     try:
         subprocess.run(["sudo", "systemctl", "stop", "printpulse"], timeout=10)
-    except Exception:
-        pass
+        logger.info("Watcher service stopped.")
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.error("Failed to stop watcher service: %s", type(exc).__name__)
     return redirect(url_for("index"))
 
 

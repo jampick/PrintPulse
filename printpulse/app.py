@@ -12,6 +12,7 @@ from printpulse import plotter
 from printpulse import thermal
 from printpulse import journal
 from printpulse.secure_fs import check_permissions
+from printpulse.logging_config import setup_logging
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -201,6 +202,9 @@ def _check_config_permissions():
 def run(argv: list[str]):
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    # Initialize structured logging
+    setup_logging()
 
     # Check config file permissions on startup
     _check_config_permissions()
