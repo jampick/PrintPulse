@@ -29,7 +29,7 @@ def _cache_path(url: str) -> str:
 
 def fetch_image(url: str) -> bytes | None:
     """Download an image, with disk caching."""
-    from printpulse import ensure_dependency
+    from printpulse import require_dependency
 
     _ensure_cache_dir()
     cached = _cache_path(url)
@@ -38,7 +38,7 @@ def fetch_image(url: str) -> bytes | None:
         with open(cached, "rb") as f:
             return f.read()
 
-    requests = ensure_dependency("requests")
+    requests = require_dependency("requests")
     try:
         resp = requests.get(url, timeout=10, headers={
             "User-Agent": "PrintPulse/0.1 (RSS reader)",
@@ -69,8 +69,8 @@ def image_to_ascii(
       - At least 4 distinct chars used
       - Recognizable shapes/silhouettes
     """
-    from printpulse import ensure_dependency
-    ensure_dependency("Pillow", "PIL")
+    from printpulse import require_dependency
+    require_dependency("Pillow", "PIL")
     from PIL import Image, ImageEnhance, ImageOps
 
     img = Image.open(io.BytesIO(image_data))

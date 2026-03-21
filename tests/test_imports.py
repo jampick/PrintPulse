@@ -1,5 +1,7 @@
 """Smoke tests: verify all modules import without errors."""
 
+import pytest
+
 
 def test_import_config():
     from printpulse import config  # noqa: F401
@@ -43,3 +45,17 @@ def test_import_journal():
 
 def test_import_app():
     from printpulse import app  # noqa: F401
+
+
+def test_require_dependency_installed():
+    """require_dependency returns the module for installed packages."""
+    from printpulse import require_dependency
+    json_mod = require_dependency("json")
+    assert hasattr(json_mod, "dumps")
+
+
+def test_require_dependency_missing():
+    """require_dependency raises ImportError for missing packages."""
+    from printpulse import require_dependency
+    with pytest.raises(ImportError, match="pip install"):
+        require_dependency("nonexistent_package_xyz_12345")
