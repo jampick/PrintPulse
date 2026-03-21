@@ -37,8 +37,8 @@ def fetch_new_items(feed_url: str, max_items: int = 3) -> list[dict]:
 
     Returns list of dicts with 'id', 'title', 'summary', '_entry', '_source' keys.
     """
-    from printpulse import ensure_dependency
-    feedparser = ensure_dependency("feedparser")
+    from printpulse import require_dependency
+    feedparser = require_dependency("feedparser")
 
     seen = _load_seen()
     feed = feedparser.parse(feed_url)
@@ -109,8 +109,8 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
     # First run: seed seen file, but leave the top N unseen so we
     # immediately print the current top story on first poll
     if not os.path.isfile(SEEN_FILE):
-        from printpulse import ensure_dependency
-        feedparser = ensure_dependency("feedparser")
+        from printpulse import require_dependency
+        feedparser = require_dependency("feedparser")
         seen = {"ids": set(), "titles": set()}
         skip = max_prints if max_prints > 0 else 1
         for feed_url in feed_urls:

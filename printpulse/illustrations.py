@@ -299,8 +299,8 @@ def get_paths_height(paths: list[str]) -> float:
 
 def _preprocess_image_with_params(image_bytes: bytes, preset: TracingPreset) -> bytes:
     """Convert DALL-E image to high-contrast B&W using given preset params."""
-    from printpulse import ensure_dependency
-    ensure_dependency("Pillow", "PIL")
+    from printpulse import require_dependency
+    require_dependency("Pillow", "PIL")
     from PIL import Image, ImageFilter, ImageOps
 
     img = Image.open(io.BytesIO(image_bytes))
@@ -327,8 +327,8 @@ def _trace_image_to_svg_with_params(
     image_bytes: bytes, preset: TracingPreset
 ) -> Optional[str]:
     """Trace a preprocessed B&W image to SVG using vtracer with given params."""
-    from printpulse import ensure_dependency
-    vtracer = ensure_dependency("vtracer")
+    from printpulse import require_dependency
+    vtracer = require_dependency("vtracer")
 
     secure_makedirs(CACHE_DIR)
     tmp_in = None
@@ -492,8 +492,8 @@ def _get_illustration_label(
     letter_text: str, kind: str, api_key: str
 ) -> str:
     """Ask GPT-4o for a 1-2 word annotation label for an illustration."""
-    from printpulse import ensure_dependency
-    openai = ensure_dependency("openai")
+    from printpulse import require_dependency
+    openai = require_dependency("openai")
 
     snippet = letter_text[:400].strip()
     prompt = _LABEL_PROMPT.format(kind=kind, snippet=snippet)
@@ -665,9 +665,9 @@ def _generate_dalle_image(
     theme: str = "green",
 ) -> Optional[bytes]:
     """Generate an image via DALL-E 3 API. Returns PNG bytes or None."""
-    from printpulse import ensure_dependency
-    openai = ensure_dependency("openai")
-    requests = ensure_dependency("requests")
+    from printpulse import require_dependency
+    openai = require_dependency("openai")
+    requests = require_dependency("requests")
 
     try:
         client = openai.OpenAI(api_key=api_key)
@@ -738,8 +738,8 @@ def _qa_vision_call(
 
     Returns (score 1-10, feedback string).
     """
-    from printpulse import ensure_dependency
-    openai = ensure_dependency("openai")
+    from printpulse import require_dependency
+    openai = require_dependency("openai")
 
     try:
         b64 = base64.b64encode(image_bytes).decode("utf-8")
@@ -786,8 +786,8 @@ def _render_paths_to_image(
     Returns PNG bytes. Handles M/L/C/Q/H/V/Z commands with cubic bezier
     sampling for reasonable visual accuracy.
     """
-    from printpulse import ensure_dependency
-    ensure_dependency("Pillow", "PIL")
+    from printpulse import require_dependency
+    require_dependency("Pillow", "PIL")
     from PIL import Image, ImageDraw
 
     # ── Pass 1: collect all coordinates for bounding box ──
