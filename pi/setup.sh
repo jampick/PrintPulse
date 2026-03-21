@@ -8,10 +8,17 @@
 
 set -e  # Stop on any error
 
+# Auto-detect current user and home directory
+PP_USER="$(whoami)"
+PP_HOME="$(eval echo ~$PP_USER)"
+
 echo ""
 echo "╔═════════════════════════════════════════════════════╗"
 echo "║         PRINTPULSE APPLIANCE SETUP                 ║"
 echo "╚═════════════════════════════════════════════════════╝"
+echo ""
+echo "  User: $PP_USER"
+echo "  Home: $PP_HOME"
 echo ""
 
 # ── 1. System packages ──────────────────────────────────────────
@@ -22,13 +29,13 @@ echo "  OK"
 
 # ── 2. Clone repo (or update if already cloned) ─────────────────
 echo "[2/7] Setting up PrintPulse..."
-cd /home/pi
+cd "$PP_HOME"
 
 if [ -d "PrintPulse" ]; then
     echo "  Repository exists, pulling latest..."
     cd PrintPulse
     git pull --ff-only || true
-    cd /home/pi
+    cd "$PP_HOME"
 else
     echo "  Cloning repository..."
     git clone https://github.com/jampick/PrintPulse.git
@@ -36,38 +43,82 @@ fi
 
 # ── 3. Create virtual environment and install ────────────────────
 echo "[3/7] Creating Python environment..."
-python3 -m venv printpulse-venv
-source printpulse-venv/bin/activate
+python3 -m venv "$PP_HOME/printpulse-venv"
+source "$PP_HOME/printpulse-venv/bin/activate"
 
 # Install only what's needed for thermal watch mode (lightweight)
 pip install --quiet --upgrade pip
 pip install --quiet feedparser rich requests flask
 
 # Install the package itself (without heavy deps like whisper)
-pip install --quiet --no-deps -e PrintPulse
+pip install --quiet --no-deps -e "$PP_HOME/PrintPulse"
 
 echo "  OK"
 
 # ── 4. USB printer permissions ───────────────────────────────────
 echo "[4/7] Setting up printer permissions..."
-sudo usermod -a -G lp pi 2>/dev/null || true
-echo "  Added user 'pi' to 'lp' group for USB printer access"
+sudo usermod -a -G lp "$PP_USER" 2>/dev/null || true
+echo "  Added user '$PP_USER' to 'lp' group for USB printer access"
 
 # ── 5. Sudoers for service control (Flask needs this) ────────────
 echo "[5/7] Configuring service permissions..."
-sudo tee /etc/sudoers.d/printpulse > /dev/null << 'SUDOERS'
-pi ALL=(ALL) NOPASSWD: /bin/systemctl restart printpulse
-pi ALL=(ALL) NOPASSWD: /bin/systemctl stop printpulse
-pi ALL=(ALL) NOPASSWD: /bin/systemctl start printpulse
-pi ALL=(ALL) NOPASSWD: /bin/systemctl is-active printpulse
+sudo tee /etc/sudoers.d/printpulse > /dev/null << SUDOERS
+$PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart printpulse
+$PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop printpulse
+$PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl start printpulse
+$PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl is-active printpulse
 SUDOERS
 sudo chmod 440 /etc/sudoers.d/printpulse
 echo "  OK"
 
 # ── 6. Install systemd services ─────────────────────────────────
 echo "[6/7] Installing systemd services..."
-sudo cp /home/pi/PrintPulse/pi/printpulse.service /etc/systemd/system/
-sudo cp /home/pi/PrintPulse/pi/printpulse-web.service /etc/systemd/system/
+
+# Generate service files with correct user and paths
+sudo tee /etc/systemd/system/printpulse.service > /dev/null << SVCFILE
+[Unit]
+Description=PrintPulse News Watcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$PP_USER
+ExecStart=$PP_HOME/printpulse-venv/bin/python -m printpulse.pi_launcher
+WorkingDirectory=$PP_HOME/PrintPulse
+Restart=on-failure
+RestartSec=10
+Environment=HOME=$PP_HOME
+Environment=PYTHONPATH=$PP_HOME/PrintPulse
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+SVCFILE
+
+sudo tee /etc/systemd/system/printpulse-web.service > /dev/null << WEBFILE
+[Unit]
+Description=PrintPulse Web Config UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$PP_USER
+ExecStart=$PP_HOME/printpulse-venv/bin/python $PP_HOME/PrintPulse/pi/webapp/server.py
+WorkingDirectory=$PP_HOME/PrintPulse
+Restart=on-failure
+RestartSec=5
+Environment=HOME=$PP_HOME
+Environment=PYTHONPATH=$PP_HOME/PrintPulse
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+WEBFILE
+
 sudo systemctl daemon-reload
 sudo systemctl enable printpulse printpulse-web
 echo "  Services enabled (will start on boot)"
@@ -76,7 +127,7 @@ echo "  Services enabled (will start on boot)"
 echo "[7/7] Creating default configuration..."
 python3 -c "
 import sys
-sys.path.insert(0, '/home/pi/PrintPulse')
+sys.path.insert(0, '$PP_HOME/PrintPulse')
 from pi.appliance import save_config, default_config, CONFIG_PATH
 import os
 if not os.path.isfile(CONFIG_PATH):
