@@ -11,6 +11,7 @@ from printpulse import text_to_svg
 from printpulse import plotter
 from printpulse import thermal
 from printpulse import journal
+from printpulse.secure_fs import check_permissions
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -176,9 +177,33 @@ def _resolve_font(font_arg: str | None) -> str | None:
     return None
 
 
+def _check_config_permissions():
+    """Warn if config files have overly permissive permissions."""
+    config_dir = os.path.expanduser("~/.printpulse")
+    appliance_config = os.path.expanduser("~/.printpulse_appliance.json")
+
+    paths_to_check = [config_dir, appliance_config]
+    # Also check files inside config dir
+    if os.path.isdir(config_dir):
+        for name in os.listdir(config_dir):
+            paths_to_check.append(os.path.join(config_dir, name))
+
+    all_warnings = []
+    for path in paths_to_check:
+        all_warnings.extend(check_permissions(path))
+
+    if all_warnings:
+        import warnings
+        for w in all_warnings:
+            warnings.warn(w, stacklevel=2)
+
+
 def run(argv: list[str]):
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    # Check config file permissions on startup
+    _check_config_permissions()
 
     # Build config
     config = Config()

@@ -1,11 +1,11 @@
 import os
 import queue
-import tempfile
 import threading
 
 import numpy as np
 
 from printpulse import ui
+from printpulse.secure_fs import secure_tempfile, secure_delete
 
 _whisper_model = None
 _whisper_model_name = None
@@ -40,9 +40,7 @@ def record_audio(
     import sounddevice as sd
     import soundfile as sf
 
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    tmp_path = tmp.name
-    tmp.close()
+    tmp_path = secure_tempfile(suffix=".wav")
 
     if duration is not None:
         # Fixed-duration recording
