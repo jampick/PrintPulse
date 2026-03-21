@@ -152,7 +152,10 @@
     </style>
 </head>
 <body>
-    <h1>[ PRINTPULSE ]</h1>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>[ PRINTPULSE ]</h1>
+        <a href="/logout" style="color:#1a4a1a; text-decoration:none; font-size:0.8em;">[ LOGOUT ]</a>
+    </div>
     <div class="subtitle">Appliance Configuration</div>
 
     <!-- Status Bar -->
@@ -173,6 +176,7 @@
 
     <!-- Config Form -->
     <form action="/save" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="panel">
             <div class="panel-title">// RSS FEEDS</div>
             <label for="feeds">Feed URLs (one per line):</label>
@@ -220,9 +224,11 @@
         <div class="panel-title">// SERVICE CONTROL</div>
         <div class="btn-row">
             <form action="/start" method="post" style="flex:1;display:flex;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-start" style="flex:1;">[ START ]</button>
             </form>
             <form action="/stop" method="post" style="flex:1;display:flex;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-stop" style="flex:1;">[ STOP ]</button>
             </form>
         </div>

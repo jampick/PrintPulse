@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrintPulse — Login</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0a0a0a;
+            color: #33ff33;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-box {
+            border: 2px solid #1a4a1a;
+            padding: 30px;
+            background: #0d0d0d;
+            width: 100%;
+            max-width: 380px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.4em;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px #33ff33;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #1a8a1a;
+            margin-bottom: 25px;
+            font-size: 0.8em;
+        }
+
+        label {
+            display: block;
+            color: #1aaa1a;
+            margin-bottom: 4px;
+            font-size: 0.85em;
+        }
+
+        input {
+            width: 100%;
+            background: #111;
+            color: #33ff33;
+            border: 1px solid #1a4a1a;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #33ff33;
+            box-shadow: 0 0 5px #1a4a1a;
+        }
+
+        button {
+            width: 100%;
+            background: #111;
+            color: #33ff33;
+            border: 2px solid #33ff33;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #33ff33;
+            color: #0a0a0a;
+        }
+
+        .error {
+            background: #1a0000;
+            border: 1px solid #ff3333;
+            color: #ff3333;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>[ PRINTPULSE ]</h1>
+        <div class="subtitle">Authentication Required</div>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="username">Username:</label>
+            <input type="text" name="username" id="username" autocomplete="username" required>
+            <label for="password">Password:</label>
+            <input type="password" name="password" id="password" autocomplete="current-password" required>
+            <button type="submit">[ LOGIN ]</button>
+        </form>
+    </div>
+</body>
+</html>
