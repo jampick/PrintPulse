@@ -174,6 +174,16 @@
         </div>
     </div>
 
+    <!-- Validation Errors -->
+    {% if errors %}
+    <div class="panel" style="border-color: #ff3333; margin-bottom: 20px;">
+        <div class="panel-title" style="color: #ff3333; border-bottom-color: #ff3333;">// VALIDATION ERRORS</div>
+        {% for err in errors %}
+        <div style="color: #ff3333; font-size: 0.85em; margin-bottom: 4px;">&gt; {{ err }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <!-- Config Form -->
     <form action="/save" method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
