@@ -141,13 +141,13 @@ def retro_prompt(choices: list[tuple[str, str]], theme_name: str = "green") -> s
     valid_keys = {k.upper() for k, _ in choices}
     while True:
         console.print(
-            Text(f"\n  >> ", style=theme["primary"]), end=""
+            Text("\n  >> ", style=theme["primary"]), end=""
         )
         choice = input().strip().upper()
         if choice in valid_keys:
             return choice
         console.print(
-            Text(f"  Invalid selection. Try again.", style=theme["error"])
+            Text("  Invalid selection. Try again.", style=theme["error"])
         )
 
 
@@ -164,7 +164,7 @@ def retro_menu(title: str, items: list[tuple[str, str]], theme_name: str = "gree
     retro_panel(title, menu_text, theme_name)
 
     while True:
-        console.print(Text(f"\n  >> ", style=theme["primary"]), end="")
+        console.print(Text("\n  >> ", style=theme["primary"]), end="")
         choice = input().strip()
         try:
             idx = int(choice) - 1

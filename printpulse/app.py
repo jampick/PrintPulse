@@ -487,7 +487,7 @@ def run(argv: list[str]):
             audio_path = args.audio_file
             if not audio_path:
                 ui.console.print(
-                    Text(f"\n  Enter audio file path: ", style=ui.get_theme(theme)["primary"]),
+                    Text("\n  Enter audio file path: ", style=ui.get_theme(theme)["primary"]),
                     end="",
                 )
                 audio_path = input().strip().strip('"').strip("'")

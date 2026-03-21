@@ -28,6 +28,17 @@ thermal = ["pywin32"]  # Windows only — for Rongta/ESC-POS thermal printers
 illustrations = ["vtracer"]  # DALL-E image tracing — auto-installed if missing
 pi = ["flask"]  # Raspberry Pi appliance web config UI
 
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["F"]
+ignore = ["F401", "F841"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 [tool.setuptools.packages.find]
 include = ["printpulse*"]
 

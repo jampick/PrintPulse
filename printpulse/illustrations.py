@@ -1003,7 +1003,7 @@ def _generate_with_qa(
 
         if image_bytes:
             ui.success_message(
-                f"  [CACHE HIT] DALL-E image loaded from cache.", theme
+                "  [CACHE HIT] DALL-E image loaded from cache.", theme
             )
         else:
             ui.success_message(
@@ -1013,7 +1013,7 @@ def _generate_with_qa(
             api_calls["dalle"] += 1
             if not image_bytes:
                 ui.success_message(
-                    f"  [FAIL] DALL-E generation failed, trying next attempt...",
+                    "  [FAIL] DALL-E generation failed, trying next attempt...",
                     theme,
                 )
                 continue
@@ -1024,7 +1024,7 @@ def _generate_with_qa(
 
         # ── Step 2 (Stage A): Evaluate raw DALL-E image ──
         ui.success_message(
-            f"  [STAGE A] Evaluating DALL-E image with GPT-4o Vision...", theme
+            "  [STAGE A] Evaluating DALL-E image with GPT-4o Vision...", theme
         )
         dalle_qa_prompt = _DALLE_QA_PROMPT.format(subject=full_subject)
         dalle_score, dalle_feedback = _qa_vision_call(
@@ -1044,8 +1044,8 @@ def _generate_with_qa(
 
         if dalle_score < min_score and attempt < MAX_DALLE_ATTEMPTS - 1:
             ui.success_message(
-                f"  [STAGE A] Image quality too low — will regenerate with "
-                f"stricter prompt...",
+                "  [STAGE A] Image quality too low — will regenerate with "
+                "stricter prompt...",
                 theme,
             )
             continue

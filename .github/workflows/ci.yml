@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install CI dependencies
+        run: |
+          pip install rich svgwrite numpy feedparser Pillow requests ruff pytest flask
+          pip install --no-deps -e .
+
+      - name: Lint with ruff
+        run: ruff check printpulse/ pi/
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+      - name: Check package builds
+        run: |
+          pip install build
+          python -m build --sdist
