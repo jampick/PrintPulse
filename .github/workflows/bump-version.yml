@@ -11,6 +11,7 @@ name: Bump Version
 on:
   push:
     branches: [main]
+  workflow_dispatch:   # allow manual trigger (e.g. for the first run)
 
 jobs:
   bump:
