@@ -89,6 +89,23 @@
             margin-bottom: 15px;
         }
 
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+            accent-color: #33ff33;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-row label {
+            display: inline;
+            margin-bottom: 0;
+        }
+
         textarea { height: 120px; resize: vertical; }
         textarea:focus, input:focus, select:focus {
             outline: none;
@@ -221,6 +238,31 @@
                     <input type="text" name="printer_device" id="printer_device"
                            value="{{ config.printer_device }}">
                 </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">// QUIET HOURS</div>
+            <div class="checkbox-row">
+                <input type="checkbox" name="quiet_enabled" id="quiet_enabled"
+                       value="1" {% if config.quiet_enabled %}checked{% endif %}
+                       onchange="document.getElementById('quiet-times').style.opacity = this.checked ? '1' : '0.4'">
+                <label for="quiet_enabled">Enable quiet hours</label>
+            </div>
+            <div id="quiet-times" style="opacity: {% if config.quiet_enabled %}1{% else %}0.4{% endif %}">
+                <div class="row">
+                    <div>
+                        <label for="quiet_start">Start (no printing after):</label>
+                        <input type="time" name="quiet_start" id="quiet_start"
+                               value="{{ config.quiet_start }}">
+                    </div>
+                    <div>
+                        <label for="quiet_end">End (resume printing at):</label>
+                        <input type="time" name="quiet_end" id="quiet_end"
+                               value="{{ config.quiet_end }}">
+                    </div>
+                </div>
+                <div class="help">Printer stays silent between these hours. Articles queue and print when quiet hours end.</div>
             </div>
         </div>
 

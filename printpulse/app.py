@@ -129,6 +129,18 @@ def _build_parser() -> argparse.ArgumentParser:
         default="axidraw",
         help="Output device: axidraw (pen plotter), thermal (Rongta 58mm), or both",
     )
+    parser.add_argument(
+        "--quiet-start",
+        metavar="HH:MM",
+        default=None,
+        help="Quiet hours start time (e.g. 22:00). No printing after this time.",
+    )
+    parser.add_argument(
+        "--quiet-end",
+        metavar="HH:MM",
+        default=None,
+        help="Quiet hours end time (e.g. 08:00). Resume printing at this time.",
+    )
     # ── Letter mode ──
     parser.add_argument(
         "--letter",
@@ -482,6 +494,8 @@ def run(argv: list[str]):
             max_prints=args.max_prints,
             plot_callback=_plot_item,
             theme=theme,
+            quiet_start=args.quiet_start,
+            quiet_end=args.quiet_end,
         )
         return
 

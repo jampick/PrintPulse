@@ -92,19 +92,45 @@ def mark_seen(items: list[dict]):
     _save_seen(seen)
 
 
+def _is_in_quiet_hours(quiet_start: str, quiet_end: str) -> bool:
+    """Check if current time falls within quiet hours.
+
+    Handles midnight crossover (e.g. 22:00–08:00).
+    """
+    now = datetime.now().time()
+    start_h, start_m = int(quiet_start[:2]), int(quiet_start[3:5])
+    end_h, end_m = int(quiet_end[:2]), int(quiet_end[3:5])
+
+    from datetime import time as dtime
+    start = dtime(start_h, start_m)
+    end = dtime(end_h, end_m)
+
+    if start <= end:
+        # Same-day range (e.g. 08:00–17:00)
+        return start <= now < end
+    else:
+        # Crosses midnight (e.g. 22:00–08:00)
+        return now >= start or now < end
+
+
 def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
-                   plot_callback, theme: str = "green"):
+                   plot_callback, theme: str = "green",
+                   quiet_start: str | None = None,
+                   quiet_end: str | None = None):
     """Main watch loop. Polls feeds and calls plot_callback(text) for each new item."""
     from rich.live import Live
     from rich.text import Text as RText
 
     feed_list = "\n".join(f"  {url}" for url in feed_urls)
+    quiet_label = f"Quiet hours: {quiet_start}–{quiet_end}" if quiet_start and quiet_end else "Quiet hours: off"
     ui.retro_panel(
         "WATCH MODE",
         f"Feeds ({len(feed_urls)}):\n{feed_list}\n"
-        f"Poll interval: {interval}s  |  Max per feed: {max_prints or 'unlimited'}",
+        f"Poll interval: {interval}s  |  Max per feed: {max_prints or 'unlimited'}\n"
+        f"{quiet_label}",
         theme,
     )
+    use_quiet = bool(quiet_start and quiet_end)
 
     # First run: seed seen file, but leave the top N unseen so we
     # immediately print the current top story on first poll
@@ -186,6 +212,17 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                     ))
 
                 # Stop Live temporarily to print story content normally
+                if items:
+                    # Check quiet hours — skip printing but don't mark as seen
+                    if use_quiet and _is_in_quiet_hours(quiet_start, quiet_end):
+                        live.update(RText(
+                            f"  [{now}] {len(items)} new item(s) queued — quiet hours ({quiet_start}–{quiet_end})",
+                            style=t["primary"],
+                        ))
+                        logger.info("Quiet hours active (%s–%s): %d item(s) deferred",
+                                    quiet_start, quiet_end, len(items))
+                        items = []  # Clear so we skip the print block below
+
                 if items:
                     live.stop()
 
