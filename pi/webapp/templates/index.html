@@ -5,11 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PrintPulse Appliance</title>
     <style>
+        /* Theme colors via CSS custom properties */
+        :root {
+            {% if config.theme == 'amber' %}
+            --primary: #ffaa00;
+            --mid: #aa7700;
+            --dim: #665500;
+            --border: #6b5800;
+            --label: #dd9900;
+            --help: #5a4400;
+            --glow: #ffaa00;
+            --accent: #ffaa00;
+            {% else %}
+            --primary: #33ff33;
+            --mid: #1a8a1a;
+            --dim: #1a4a1a;
+            --border: #1a4a1a;
+            --label: #1aaa1a;
+            --help: #0d5a0d;
+            --glow: #33ff33;
+            --accent: #33ff33;
+            {% endif %}
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             background: #0a0a0a;
-            color: #33ff33;
+            color: var(--primary);
             font-family: 'Courier New', monospace;
             padding: 20px;
             min-height: 100vh;
@@ -19,12 +42,12 @@
             text-align: center;
             font-size: 1.6em;
             margin-bottom: 5px;
-            text-shadow: 0 0 10px #33ff33;
+            text-shadow: 0 0 10px var(--glow);
         }
 
         .subtitle {
             text-align: center;
-            color: #1a8a1a;
+            color: var(--mid);
             margin-bottom: 25px;
             font-size: 0.85em;
         }
@@ -35,7 +58,7 @@
             gap: 30px;
             margin-bottom: 25px;
             padding: 10px;
-            border: 1px solid #1a4a1a;
+            border: 1px solid var(--border);
             background: #0d0d0d;
         }
 
@@ -57,23 +80,23 @@
         .dot-yellow { background: #ffff33; box-shadow: 0 0 6px #ffff33; }
 
         .panel {
-            border: 2px solid #1a4a1a;
+            border: 2px solid var(--border);
             padding: 20px;
             margin-bottom: 20px;
             background: #0d0d0d;
         }
 
         .panel-title {
-            color: #33ff33;
+            color: var(--primary);
             font-size: 1.1em;
             margin-bottom: 15px;
             padding-bottom: 8px;
-            border-bottom: 1px solid #1a4a1a;
+            border-bottom: 1px solid var(--border);
         }
 
         label {
             display: block;
-            color: #1aaa1a;
+            color: var(--label);
             margin-bottom: 4px;
             font-size: 0.85em;
         }
@@ -81,8 +104,8 @@
         textarea, input, select {
             width: 100%;
             background: #111;
-            color: #33ff33;
-            border: 1px solid #1a4a1a;
+            color: var(--primary);
+            border: 1px solid var(--border);
             padding: 8px;
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
@@ -92,7 +115,7 @@
         input[type="checkbox"] {
             width: auto;
             margin-right: 8px;
-            accent-color: #33ff33;
+            accent-color: var(--accent);
         }
 
         .checkbox-row {
@@ -109,8 +132,8 @@
         textarea { height: 120px; resize: vertical; }
         textarea:focus, input:focus, select:focus {
             outline: none;
-            border-color: #33ff33;
-            box-shadow: 0 0 5px #1a4a1a;
+            border-color: var(--primary);
+            box-shadow: 0 0 5px var(--border);
         }
 
         .row {
@@ -128,8 +151,8 @@
 
         button {
             background: #111;
-            color: #33ff33;
-            border: 2px solid #33ff33;
+            color: var(--primary);
+            border: 2px solid var(--primary);
             padding: 10px 20px;
             font-family: 'Courier New', monospace;
             font-size: 0.95em;
@@ -138,18 +161,18 @@
         }
 
         button:hover {
-            background: #33ff33;
+            background: var(--primary);
             color: #0a0a0a;
         }
 
-        .btn-save { border-color: #33ff33; }
+        .btn-save { border-color: var(--primary); }
         .btn-start { border-color: #33aaff; color: #33aaff; }
         .btn-start:hover { background: #33aaff; color: #0a0a0a; }
         .btn-stop { border-color: #ff3333; color: #ff3333; }
         .btn-stop:hover { background: #ff3333; color: #0a0a0a; }
 
         .help {
-            color: #0d5a0d;
+            color: var(--help);
             font-size: 0.75em;
             margin-top: -10px;
             margin-bottom: 15px;
@@ -157,7 +180,7 @@
 
         .footer {
             text-align: center;
-            color: #1a4a1a;
+            color: var(--border);
             font-size: 0.75em;
             margin-top: 30px;
         }
@@ -171,7 +194,7 @@
 <body>
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h1>[ PRINTPULSE ]</h1>
-        <a href="/logout" style="color:#1a4a1a; text-decoration:none; font-size:0.8em;">[ LOGOUT ]</a>
+        <a href="/logout" style="color:var(--border); text-decoration:none; font-size:0.8em;">[ LOGOUT ]</a>
     </div>
     <div class="subtitle">Appliance Configuration</div>
 

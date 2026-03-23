@@ -111,7 +111,8 @@ def login():
             else:
                 error = "Invalid credentials."
 
-    return render_template("login.html", error=error)
+    theme = load_config().get("theme", "green")
+    return render_template("login.html", error=error, theme=theme)
 
 
 @app.route("/logout")
