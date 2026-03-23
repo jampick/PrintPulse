@@ -523,6 +523,22 @@ def update():
     return redirect(url_for("index"))
 
 
+@app.route("/history")
+@require_auth
+def history():
+    """Show print history page."""
+    from printpulse.watch import load_history
+    items = load_history()
+    items.reverse()  # newest first
+    config = load_config()
+    return render_template(
+        "history.html",
+        items=items,
+        config=config,
+        version=_APP_VERSION,
+    )
+
+
 @app.route("/status")
 @require_auth
 def status_api():

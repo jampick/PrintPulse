@@ -10,6 +10,8 @@ from printpulse.secure_fs import secure_write_json
 logger = logging.getLogger("printpulse.watch")
 
 SEEN_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_seen.json")
+HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_history.json")
+_MAX_HISTORY = 200  # Keep last N items
 
 
 def _load_seen() -> dict:
@@ -81,6 +83,33 @@ def fetch_new_items_multi(feed_urls: list[str], max_items: int = 3) -> list[dict
             logger.error("Feed fetch failed for %s: %s", url, e)
             ui.error_panel("Feed error: could not fetch feed.", "green")
     return all_items
+
+
+def load_history() -> list[dict]:
+    """Load print history: list of {title, source, timestamp}."""
+    if os.path.isfile(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+
+def _append_history(items: list[dict]):
+    """Append printed items to history with timestamps."""
+    history = load_history()
+    now_str = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+    for item in items:
+        history.append({
+            "title": item["title"],
+            "source": item.get("_source", ""),
+            "timestamp": now_str,
+        })
+    # Trim to max
+    if len(history) > _MAX_HISTORY:
+        history = history[-_MAX_HISTORY:]
+    secure_write_json(HISTORY_FILE, history)
 
 
 def mark_seen(items: list[dict]):
@@ -242,6 +271,7 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                         try:
                             plot_callback(title, feed_item=item)
                             mark_seen([item])
+                            _append_history([item])
                         except Exception as e:
                             logger.error("Plot/print error: %s", e)
                             ui.error_panel("Plot error — check logs for details.", theme)
