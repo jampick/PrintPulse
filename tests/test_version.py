@@ -1,5 +1,6 @@
 """Tests for version info in the web UI server."""
 
+import re
 import sys
 import os
 
@@ -35,3 +36,30 @@ class TestGetVersionInfo:
         assert "+" in version
         git_hash = version.split("+")[1]
         assert len(git_hash) >= 7  # short hash is typically 7+ chars
+
+
+class TestVersionSync:
+    """Ensure __init__.py and pyproject.toml stay in sync.
+
+    The auto-bump workflow updates both files atomically; this test
+    catches any manual desync between them.
+    """
+
+    def test_init_version_matches_pyproject(self):
+        from printpulse import __version__
+
+        toml_path = os.path.join(_project_root, "pyproject.toml")
+        toml_version = None
+        with open(toml_path, "r", encoding="utf-8") as f:
+            for line in f:
+                m = re.match(r'^\s*version\s*=\s*["\']([^"\']+)["\']', line)
+                if m:
+                    toml_version = m.group(1)
+                    break
+
+        assert toml_version is not None, "Could not find version in pyproject.toml"
+        assert __version__ == toml_version, (
+            f"printpulse/__init__.py has __version__={__version__!r} "
+            f"but pyproject.toml has version={toml_version!r} — "
+            f"run the bump-version workflow or update both files together"
+        )

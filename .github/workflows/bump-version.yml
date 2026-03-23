@@ -1,0 +1,81 @@
+name: Bump Version
+
+# Runs after every push to main (e.g. a PR merge).
+# Increments the patch version in printpulse/__init__.py and pyproject.toml,
+# commits the change, and creates a vX.Y.Z tag.
+#
+# Guard: if the triggering commit is already a version-bump commit the job is
+# skipped, preventing an infinite loop.  The bump commit also carries
+# "[skip ci]" so the main CI workflow is suppressed for that push.
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  bump:
+    if: "!startsWith(github.event.head_commit.message, 'chore: bump version')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to push commits and tags
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Use GITHUB_TOKEN so the push triggers tag creation
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          python3 - <<'PYEOF'
+          import re, os
+
+          # ── Read current version from __init__.py ──────────────────────────
+          with open("printpulse/__init__.py", "r") as f:
+              init_src = f.read()
+
+          m = re.search(r'__version__\s*=\s*["\'](\d+\.\d+\.\d+)["\']', init_src)
+          if not m:
+              raise SystemExit("Could not find __version__ in printpulse/__init__.py")
+          old = m.group(1)
+          major, minor, patch = old.split(".")
+          new = f"{major}.{minor}.{int(patch) + 1}"
+          print(f"Bumping {old} -> {new}")
+
+          # ── Update printpulse/__init__.py ──────────────────────────────────
+          init_src = re.sub(
+              r'(__version__\s*=\s*["\'])' + re.escape(old) + r'(["\'])',
+              rf'\g<1>{new}\g<2>',
+              init_src,
+          )
+          with open("printpulse/__init__.py", "w") as f:
+              f.write(init_src)
+
+          # ── Update pyproject.toml ──────────────────────────────────────────
+          with open("pyproject.toml", "r") as f:
+              toml_src = f.read()
+          toml_src = re.sub(
+              r'^(version\s*=\s*["\'])' + re.escape(old) + r'(["\'])',
+              rf'\g<1>{new}\g<2>',
+              toml_src,
+              flags=re.MULTILINE,
+          )
+          with open("pyproject.toml", "w") as f:
+              f.write(toml_src)
+
+          # ── Export outputs ─────────────────────────────────────────────────
+          with open(os.environ["GITHUB_OUTPUT"], "a") as gof:
+              gof.write(f"new_version={new}\n")
+              gof.write(f"old_version={old}\n")
+          PYEOF
+
+      - name: Commit and tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add printpulse/__init__.py pyproject.toml
+          git commit -m "chore: bump version ${{ steps.bump.outputs.new_version }} [skip ci]"
+          git tag "v${{ steps.bump.outputs.new_version }}"
+          git push origin main --follow-tags
