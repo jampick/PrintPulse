@@ -52,6 +52,12 @@ def main():
     theme = config.get("theme", "green")
     argv.extend(["--theme", theme])
 
+    # Quiet hours
+    if config.get("quiet_enabled", True):
+        quiet_start = config.get("quiet_start", "22:00")
+        quiet_end = config.get("quiet_end", "08:00")
+        argv.extend(["--quiet-start", quiet_start, "--quiet-end", quiet_end])
+
     print(f"PrintPulse appliance starting: {len(feeds)} feed(s), "
           f"interval={interval}s, max_prints={max_prints}")
     print(f"Feeds: {', '.join(feeds)}")

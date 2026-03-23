@@ -267,6 +267,20 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         errors.append(f"Invalid theme. Must be one of: {', '.join(sorted(_VALID_THEMES))}.")
         theme = "green"
 
+    # --- Quiet hours ---
+    quiet_enabled = form.get("quiet_enabled") == "1"
+
+    quiet_start = form.get("quiet_start", "22:00").strip()
+    quiet_end = form.get("quiet_end", "08:00").strip()
+    _time_re = re.compile(r"^\d{2}:\d{2}$")
+    for label, val in [("Quiet start", quiet_start), ("Quiet end", quiet_end)]:
+        if not _time_re.match(val):
+            errors.append(f"{label} must be in HH:MM format.")
+        else:
+            hh, mm = int(val[:2]), int(val[3:5])
+            if hh > 23 or mm > 59:
+                errors.append(f"{label} is not a valid time.")
+
     # --- Printer device ---
     printer_device = form.get("printer_device", "/dev/usb/lp0").strip()
     if len(printer_device) > 64:
@@ -288,6 +302,9 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         "max_prints": max_prints,
         "theme": theme,
         "printer_device": printer_device,
+        "quiet_enabled": quiet_enabled,
+        "quiet_start": quiet_start,
+        "quiet_end": quiet_end,
     }, []
 
 
@@ -360,6 +377,9 @@ def save():
     config["max_prints"] = validated["max_prints"]
     config["theme"] = validated["theme"]
     config["printer_device"] = validated["printer_device"]
+    config["quiet_enabled"] = validated["quiet_enabled"]
+    config["quiet_start"] = validated["quiet_start"]
+    config["quiet_end"] = validated["quiet_end"]
     save_config(config)
 
     # Restart the watcher service to pick up new config
