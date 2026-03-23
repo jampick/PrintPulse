@@ -306,6 +306,10 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-stop" style="flex:1;">[ STOP ]</button>
             </form>
+            <form action="/update" method="post" style="flex:1;display:flex;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-start" style="flex:1;">[ UPDATE ]</button>
+            </form>
         </div>
     </div>
 
