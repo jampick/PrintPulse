@@ -39,6 +39,39 @@ from pi.appliance import load_config, save_config, verify_password
 
 app = Flask(__name__)
 
+
+# ─── Version Info ──────────────────────────────────────────────────────────
+
+def _get_version_info() -> str:
+    """Get version string from pyproject.toml + git short hash."""
+    version = "unknown"
+    try:
+        toml_path = os.path.join(_project_root, "pyproject.toml")
+        with open(toml_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip().startswith("version"):
+                    version = line.split("=")[1].strip().strip('"').strip("'")
+                    break
+    except Exception:
+        pass
+
+    # Append git short hash
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=5,
+            cwd=_project_root,
+        )
+        if result.returncode == 0:
+            version += f"+{result.stdout.strip()}"
+    except Exception:
+        pass
+
+    return version
+
+
+_APP_VERSION = _get_version_info()
+
 # Load secret key from config (generated during setup)
 _cfg = load_config()
 app.secret_key = _cfg.get("secret_key") or secrets.token_hex(32)
@@ -346,6 +379,7 @@ def index():
         printer_ok=printer_ok,
         feeds_text="\n".join(config.get("feeds", [])),
         errors=[],
+        version=_APP_VERSION,
     )
 
 
@@ -370,6 +404,7 @@ def save():
             printer_ok=printer_ok,
             feeds_text=request.form.get("feeds", ""),
             errors=errors,
+            version=_APP_VERSION,
         )
 
     config = load_config()
