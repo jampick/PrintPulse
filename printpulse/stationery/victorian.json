@@ -8,7 +8,7 @@
     "font_size": 20.0,
     "frame_style": "ornamental"
   },
-  "corner_ornaments": "gears",
+  "corner_ornaments": "none",
   "body_font": "futural",
   "body_font_size": 12.0,
   "illustrations": {
