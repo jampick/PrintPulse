@@ -42,6 +42,55 @@ app = Flask(__name__)
 
 # ─── Timezone Info ─────────────────────────────────────────────────────────
 
+# Curated list of IANA timezone names shown in the UI dropdown.
+# Empty string ("") means "use system timezone".
+SELECTABLE_TIMEZONES: list[str] = [
+    "",  # System default
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "America/Anchorage",
+    "America/Honolulu",
+    "America/Phoenix",
+    "America/Toronto",
+    "America/Vancouver",
+    "America/Sao_Paulo",
+    "America/Argentina/Buenos_Aires",
+    "America/Mexico_City",
+    "Europe/London",
+    "Europe/Paris",
+    "Europe/Berlin",
+    "Europe/Madrid",
+    "Europe/Rome",
+    "Europe/Amsterdam",
+    "Europe/Stockholm",
+    "Europe/Helsinki",
+    "Europe/Athens",
+    "Europe/Istanbul",
+    "Europe/Moscow",
+    "Africa/Cairo",
+    "Africa/Johannesburg",
+    "Africa/Lagos",
+    "Asia/Dubai",
+    "Asia/Kolkata",
+    "Asia/Dhaka",
+    "Asia/Bangkok",
+    "Asia/Singapore",
+    "Asia/Shanghai",
+    "Asia/Tokyo",
+    "Asia/Seoul",
+    "Asia/Taipei",
+    "Asia/Jakarta",
+    "Australia/Sydney",
+    "Australia/Melbourne",
+    "Australia/Perth",
+    "Pacific/Auckland",
+    "Pacific/Honolulu",
+    "UTC",
+]
+
+
 def _get_system_timezone() -> str:
     """Get a human-readable system timezone string."""
     try:
@@ -330,6 +379,11 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
             if hh > 23 or mm > 59:
                 errors.append(f"{label} is not a valid time.")
 
+    quiet_tz = form.get("quiet_tz", "").strip()
+    if quiet_tz and quiet_tz not in SELECTABLE_TIMEZONES:
+        errors.append("Invalid timezone selection.")
+        quiet_tz = ""
+
     # --- Printer device ---
     printer_device = form.get("printer_device", "/dev/usb/lp0").strip()
     if len(printer_device) > 64:
@@ -354,6 +408,7 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         "quiet_enabled": quiet_enabled,
         "quiet_start": quiet_start,
         "quiet_end": quiet_end,
+        "quiet_tz": quiet_tz,
     }, []
 
 
@@ -396,6 +451,7 @@ def index():
         errors=[],
         version=_APP_VERSION,
         timezone=_get_system_timezone(),
+        timezones=SELECTABLE_TIMEZONES,
     )
 
 
@@ -422,6 +478,7 @@ def save():
             errors=errors,
             version=_APP_VERSION,
             timezone=_get_system_timezone(),
+            timezones=SELECTABLE_TIMEZONES,
         )
 
     config = load_config()
@@ -433,6 +490,7 @@ def save():
     config["quiet_enabled"] = validated["quiet_enabled"]
     config["quiet_start"] = validated["quiet_start"]
     config["quiet_end"] = validated["quiet_end"]
+    config["quiet_tz"] = validated["quiet_tz"]
     save_config(config)
 
     # Restart the watcher service to pick up new config

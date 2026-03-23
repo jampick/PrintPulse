@@ -288,7 +288,19 @@
                                value="{{ config.quiet_end }}">
                     </div>
                 </div>
-                <div class="help">Printer stays silent between these hours. Articles queue and print when quiet hours end. Timezone: {{ timezone }}</div>
+                <div class="row">
+                    <div>
+                        <label for="quiet_tz">Timezone:</label>
+                        <select name="quiet_tz" id="quiet_tz">
+                            {% for tz in timezones %}
+                            <option value="{{ tz }}"{% if config.quiet_tz == tz %} selected{% endif %}>
+                                {%- if tz == "" -%}System default ({{ timezone }}){%- else -%}{{ tz }}{%- endif -%}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="help">Printer stays silent between these hours. Articles queue and print when quiet hours end.</div>
             </div>
         </div>
 
