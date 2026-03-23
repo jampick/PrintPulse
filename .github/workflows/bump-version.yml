@@ -79,4 +79,5 @@ jobs:
           git add printpulse/__init__.py pyproject.toml
           git commit -m "chore: bump version ${{ steps.bump.outputs.new_version }} [skip ci]"
           git tag "v${{ steps.bump.outputs.new_version }}"
-          git push origin main --follow-tags
+          git push origin main
+          git push origin "v${{ steps.bump.outputs.new_version }}"
