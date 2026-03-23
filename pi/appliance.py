@@ -27,6 +27,7 @@ def default_config() -> dict:
         "quiet_enabled": True,
         "quiet_start": "22:00",
         "quiet_end": "08:00",
+        "quiet_tz": "",
         "enabled": True,
         "auth_user": "",
         "auth_hash": "",

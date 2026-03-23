@@ -140,6 +140,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Quiet hours end time (e.g. 08:00). Resume printing at this time.",
     )
+    parser.add_argument(
+        "--quiet-tz",
+        metavar="TZ",
+        default=None,
+        help="IANA timezone for quiet hours (e.g. America/New_York). Defaults to system timezone.",
+    )
     # ── Letter mode ──
     parser.add_argument(
         "--letter",
@@ -498,6 +504,7 @@ def run(argv: list[str]):
             theme=theme,
             quiet_start=args.quiet_start,
             quiet_end=args.quiet_end,
+            quiet_tz=args.quiet_tz,
         )
         return
 
