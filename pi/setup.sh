@@ -67,6 +67,7 @@ $PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart printpulse
 $PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop printpulse
 $PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl start printpulse
 $PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl is-active printpulse
+$PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart printpulse-web
 SUDOERS
 sudo chmod 440 /etc/sudoers.d/printpulse
 echo "  OK"

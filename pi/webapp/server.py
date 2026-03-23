@@ -478,6 +478,51 @@ def stop():
     return redirect(url_for("index"))
 
 
+@app.route("/update", methods=["POST"])
+@require_auth
+def update():
+    """Pull latest code from GitHub and restart services."""
+    client_ip = request.remote_addr or "unknown"
+    if _check_rate_limit(f"update:{client_ip}"):
+        abort(429)
+
+    results = []
+
+    # Git pull
+    try:
+        result = subprocess.run(
+            ["git", "-C", _project_root, "pull", "--ff-only"],
+            capture_output=True, text=True, timeout=30,
+        )
+        pull_output = result.stdout.strip()
+        if result.returncode != 0:
+            pull_output = result.stderr.strip() or "git pull failed"
+        results.append(f"git pull: {pull_output}")
+        logger.info("Update git pull: %s", pull_output)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        results.append(f"git pull failed: {type(exc).__name__}")
+        logger.error("Update git pull failed: %s", type(exc).__name__)
+
+    # Restart services
+    for svc in ["printpulse", "printpulse-web"]:
+        try:
+            subprocess.run(
+                ["sudo", "systemctl", "restart", svc],
+                timeout=10,
+            )
+            results.append(f"{svc}: restarted")
+            logger.info("Update restarted %s", svc)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            results.append(f"{svc}: restart failed ({type(exc).__name__})")
+            logger.error("Update failed to restart %s: %s", svc, type(exc).__name__)
+
+    # Refresh version after update
+    global _APP_VERSION
+    _APP_VERSION = _get_version_info()
+
+    return redirect(url_for("index"))
+
+
 @app.route("/status")
 @require_auth
 def status_api():
