@@ -40,6 +40,21 @@ from pi.appliance import load_config, save_config, verify_password
 app = Flask(__name__)
 
 
+# ─── Timezone Info ─────────────────────────────────────────────────────────
+
+def _get_system_timezone() -> str:
+    """Get a human-readable system timezone string."""
+    try:
+        from datetime import datetime, timezone
+        local_tz = datetime.now().astimezone().tzinfo
+        offset = datetime.now().astimezone().strftime("%z")
+        # Format as e.g. "PDT (UTC-0700)"
+        tz_name = datetime.now().astimezone().strftime("%Z")
+        return f"{tz_name} (UTC{offset[:3]}:{offset[3:]})"
+    except Exception:
+        return "unknown"
+
+
 # ─── Version Info ──────────────────────────────────────────────────────────
 
 def _get_version_info() -> str:
@@ -380,6 +395,7 @@ def index():
         feeds_text="\n".join(config.get("feeds", [])),
         errors=[],
         version=_APP_VERSION,
+        timezone=_get_system_timezone(),
     )
 
 
@@ -405,6 +421,7 @@ def save():
             feeds_text=request.form.get("feeds", ""),
             errors=errors,
             version=_APP_VERSION,
+            timezone=_get_system_timezone(),
         )
 
     config = load_config()
