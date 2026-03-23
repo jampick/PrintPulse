@@ -14,6 +14,24 @@ There are three ways to build with it:
 
 ---
 
+## Web UI (Pi Appliance)
+
+The Pi appliance is configured entirely through a browser-based interface served from the Pi itself — no SSH needed for day-to-day use.
+
+**Configuration** — add RSS feeds, set the poll interval, quiet hours, and auto-update schedule:
+
+![PrintPulse web UI — configuration](docs/screenshot-config.png)
+
+**Service control** — start, stop, update the watcher, and send a test print with one click:
+
+![PrintPulse web UI — service control](docs/screenshot-controls.png)
+
+**Print history** — see every headline that's been sent to the printer, with source and timestamp:
+
+![PrintPulse web UI — print history](docs/screenshot-history.png)
+
+---
+
 ## What You Need
 
 ### For AxiDraw plotting
