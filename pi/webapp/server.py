@@ -539,6 +539,33 @@ def history():
     )
 
 
+@app.route("/test_print", methods=["POST"])
+@require_auth
+def test_print():
+    """Send a test news story to the thermal printer."""
+    client_ip = request.remote_addr or "unknown"
+    if _check_rate_limit(f"test_print:{client_ip}"):
+        return jsonify({"ok": False, "message": "Rate limit exceeded. Try again shortly."}), 429
+
+    from datetime import datetime
+    from printpulse.thermal import print_news_item
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+    ok = print_news_item(
+        title="PrintPulse Test Print",
+        summary=(
+            "This is a test print from the PrintPulse web UI. "
+            "If you can read this, your thermal printer is working correctly."
+        ),
+        source="PrintPulse Appliance",
+        timestamp=timestamp,
+    )
+    logger.info("Test print requested: %s", "success" if ok else "failed")
+    if ok:
+        return jsonify({"ok": True, "message": "Test print sent successfully."})
+    return jsonify({"ok": False, "message": "Print failed — check printer connection."})
+
+
 @app.route("/status")
 @require_auth
 def status_api():
