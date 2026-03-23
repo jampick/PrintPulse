@@ -51,7 +51,7 @@ class IllustrationConfig:
 class StationeryProfile:
     name: str = "victorian"
     header: HeaderConfig = field(default_factory=HeaderConfig)
-    corner_ornaments: str = "gears"       # "gears", "flourishes", "simple"
+    corner_ornaments: str = "none"        # "none", "gears", "flourishes", "simple"
     body_font: str = "scripts"
     body_font_size: float = 12.0
     illustrations: IllustrationConfig = field(default_factory=IllustrationConfig)
