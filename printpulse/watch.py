@@ -11,7 +11,9 @@ logger = logging.getLogger("printpulse.watch")
 
 SEEN_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_seen.json")
 HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_history.json")
+RETRY_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_retry.json")
 _MAX_HISTORY = 200  # Keep last N items
+_MAX_RETRIES = 3    # Max retry attempts per item
 
 
 def _load_seen() -> dict:
@@ -112,6 +114,48 @@ def _append_history(items: list[dict]):
     secure_write_json(HISTORY_FILE, history)
 
 
+def _load_retry_queue() -> list[dict]:
+    """Load retry queue: list of {id, title, summary, _source, attempts}."""
+    if os.path.isfile(RETRY_FILE):
+        try:
+            with open(RETRY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+
+def _save_retry_queue(queue: list[dict]):
+    """Save retry queue to disk."""
+    secure_write_json(RETRY_FILE, queue)
+
+
+def _add_to_retry(item: dict):
+    """Add a failed item to the retry queue."""
+    queue = _load_retry_queue()
+    # Check if already in queue
+    for q_item in queue:
+        if q_item.get("id") == item.get("id"):
+            q_item["attempts"] = q_item.get("attempts", 0) + 1
+            _save_retry_queue(queue)
+            return
+    queue.append({
+        "id": item.get("id", ""),
+        "title": item.get("title", ""),
+        "summary": item.get("summary", ""),
+        "_source": item.get("_source", ""),
+        "attempts": 1,
+    })
+    _save_retry_queue(queue)
+
+
+def _remove_from_retry(item_id: str):
+    """Remove a successfully printed item from the retry queue."""
+    queue = _load_retry_queue()
+    queue = [q for q in queue if q.get("id") != item_id]
+    _save_retry_queue(queue)
+
+
 def mark_seen(items: list[dict]):
     """Mark items as seen so they won't be plotted again."""
     seen = _load_seen()
@@ -205,6 +249,42 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                     style=t["primary"],
                 ))
 
+                # ── RETRY QUEUE: process failed items first ──
+                retry_queue = _load_retry_queue()
+                retryable = [r for r in retry_queue if r.get("attempts", 0) < _MAX_RETRIES]
+                expired = [r for r in retry_queue if r.get("attempts", 0) >= _MAX_RETRIES]
+                if expired:
+                    # Remove items that exceeded max retries
+                    for r in expired:
+                        logger.warning("Retry limit reached for '%s', giving up", r.get("title"))
+                        mark_seen([{"id": r["id"], "title": r["title"]}])
+                    _save_retry_queue(retryable)
+
+                if retryable and not (use_quiet and _is_in_quiet_hours(quiet_start, quiet_end)):
+                    live.stop()
+                    ui.retro_panel("RETRY", f"Retrying {len(retryable)} failed item(s).", theme)
+                    for r_item in retryable:
+                        title = r_item["title"]
+                        ui.retro_panel(
+                            f"RETRY ({r_item.get('attempts', 0)}/{_MAX_RETRIES})",
+                            title, theme,
+                        )
+                        fake_item = {
+                            "id": r_item["id"], "title": title,
+                            "summary": r_item.get("summary", ""),
+                            "_source": r_item.get("_source", ""),
+                        }
+                        try:
+                            plot_callback(title, feed_item=fake_item)
+                            mark_seen([fake_item])
+                            _append_history([fake_item])
+                            _remove_from_retry(r_item["id"])
+                            ui.success_message(f"Retry succeeded: {title}", theme)
+                        except Exception as e:
+                            logger.error("Retry failed for '%s': %s", title, e)
+                            _add_to_retry(fake_item)
+                    live.start()
+
                 try:
                     items = fetch_new_items_multi(feed_urls, max_prints)
                 except Exception as e:
@@ -272,9 +352,11 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                             plot_callback(title, feed_item=item)
                             mark_seen([item])
                             _append_history([item])
+                            _remove_from_retry(item.get("id", ""))
                         except Exception as e:
                             logger.error("Plot/print error: %s", e)
                             ui.error_panel("Plot error — check logs for details.", theme)
+                            _add_to_retry(item)
 
                     # Resume Live for the next idle countdown
                     live.start()
