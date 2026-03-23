@@ -122,7 +122,11 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
     from rich.text import Text as RText
 
     feed_list = "\n".join(f"  {url}" for url in feed_urls)
-    quiet_label = f"Quiet hours: {quiet_start}–{quiet_end}" if quiet_start and quiet_end else "Quiet hours: off"
+    if quiet_start and quiet_end:
+        tz_name = datetime.now().astimezone().strftime("%Z")
+        quiet_label = f"Quiet hours: {quiet_start}–{quiet_end} ({tz_name})"
+    else:
+        quiet_label = "Quiet hours: off"
     ui.retro_panel(
         "WATCH MODE",
         f"Feeds ({len(feed_urls)}):\n{feed_list}\n"
