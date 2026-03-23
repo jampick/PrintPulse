@@ -196,6 +196,7 @@
         <h1>[ PRINTPULSE ]</h1>
         <div>
             <a href="/history" style="color:var(--mid); text-decoration:none; font-size:0.8em;">[ HISTORY ]</a>
+            <a href="/update_log" style="color:var(--mid); text-decoration:none; font-size:0.8em;">[ UPDATE LOG ]</a>
             <a href="/logout" style="color:var(--border); text-decoration:none; font-size:0.8em;">[ LOGOUT ]</a>
         </div>
     </div>
@@ -292,6 +293,31 @@
             </div>
         </div>
 
+        <div class="panel">
+            <div class="panel-title">// AUTO-UPDATE</div>
+            <div class="checkbox-row">
+                <input type="checkbox" name="auto_update_enabled" id="auto_update_enabled"
+                       value="1" {% if config.auto_update_enabled %}checked{% endif %}
+                       onchange="document.getElementById('auto-update-opts').style.opacity = this.checked ? '1' : '0.4'">
+                <label for="auto_update_enabled">Automatically pull updates from GitHub</label>
+            </div>
+            <div id="auto-update-opts" style="opacity: {% if config.auto_update_enabled %}1{% else %}0.4{% endif %}; margin-top: 8px;">
+                <label for="auto_update_interval">Check interval:</label>
+                <select name="auto_update_interval" id="auto_update_interval">
+                    <option value="1"  {% if config.auto_update_interval == 1  %}selected{% endif %}>Every hour</option>
+                    <option value="6"  {% if config.auto_update_interval == 6  %}selected{% endif %}>Every 6 hours</option>
+                    <option value="12" {% if config.auto_update_interval == 12 %}selected{% endif %}>Every 12 hours</option>
+                    <option value="24" {% if config.auto_update_interval == 24 %}selected{% endif %}>Daily (every 24 hours)</option>
+                </select>
+                <div class="help">Only restarts services if new commits are found. First check runs after one full interval.</div>
+                {% if config.auto_update_enabled %}
+                <div id="auto-update-status" style="margin-top: 6px; font-size: 0.8em; color: var(--mid);">
+                    Last check: <span id="au-last-check">loading...</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
         <div class="btn-row">
             <button type="submit" class="btn-save">[ SAVE & RESTART ]</button>
         </div>
@@ -371,6 +397,16 @@
 
                     prtText.textContent = data.printer ? 'connected' : 'not found';
                     prtDot.className = 'dot ' + (data.printer ? 'dot-green' : 'dot-red');
+
+                    var auEl = document.getElementById('au-last-check');
+                    if (auEl && data.auto_update) {
+                        var au = data.auto_update;
+                        if (au.last_check) {
+                            auEl.textContent = au.last_check + ' — ' + au.last_result;
+                        } else {
+                            auEl.textContent = 'not yet checked';
+                        }
+                    }
                 })
                 .catch(function() {});
         }, 5000);
