@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrintPulse — Print History</title>
+    <style>
+        :root {
+            {% if config.theme == 'amber' %}
+            --primary: #ffaa00;
+            --mid: #aa7700;
+            --dim: #665500;
+            --border: #6b5800;
+            --label: #dd9900;
+            --help: #5a4400;
+            --glow: #ffaa00;
+            {% else %}
+            --primary: #33ff33;
+            --mid: #1a8a1a;
+            --dim: #1a4a1a;
+            --border: #1a4a1a;
+            --label: #1aaa1a;
+            --help: #0d5a0d;
+            --glow: #33ff33;
+            {% endif %}
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0a0a0a;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.6em;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px var(--glow);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--mid);
+            margin-bottom: 25px;
+            font-size: 0.85em;
+        }
+
+        .nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .nav a {
+            color: var(--mid);
+            text-decoration: none;
+            font-size: 0.85em;
+        }
+
+        .nav a:hover {
+            color: var(--primary);
+        }
+
+        .panel {
+            border: 2px solid var(--border);
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #0d0d0d;
+        }
+
+        .panel-title {
+            color: var(--primary);
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #111;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-title {
+            color: var(--primary);
+            font-size: 0.9em;
+        }
+
+        .history-meta {
+            color: var(--help);
+            font-size: 0.75em;
+            margin-top: 2px;
+        }
+
+        .empty {
+            color: var(--mid);
+            font-style: italic;
+            font-size: 0.85em;
+        }
+
+        .footer {
+            text-align: center;
+            color: var(--border);
+            font-size: 0.75em;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <h1>[ PRINTPULSE ]</h1>
+    <div class="subtitle">Print History</div>
+    <div class="nav"><a href="/">&laquo; Back to Configuration</a></div>
+
+    <div class="panel">
+        <div class="panel-title">// RECENTLY PRINTED ({{ items|length }} items)</div>
+        {% if items %}
+            {% for item in items %}
+            <div class="history-item">
+                <div class="history-title">&gt; {{ item.title }}</div>
+                <div class="history-meta">
+                    {% if item.source %}{{ item.source }} &mdash; {% endif %}{{ item.timestamp }}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty">No items printed yet.</div>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        PrintPulse v{{ version }} &mdash; Raspberry Pi Zero
+    </div>
+</body>
+</html>
