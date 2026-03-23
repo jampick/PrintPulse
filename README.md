@@ -1,32 +1,36 @@
 # PrintPulse
 
-**Voice-to-print for AxiDraw pen plotters and thermal printers.**
+Voice-to-print for AxiDraw pen plotters and thermal printers. Dictate a message, type something, or point it at RSS feeds — PrintPulse renders text in single-stroke Hershey fonts and sends it to a pen plotter or thermal receipt printer. Retro 80's terminal aesthetic throughout.
 
-Dictate a message, type something, or let it monitor a live news feed — PrintPulse renders text in hand-drawn single-stroke vector fonts and sends it to a pen plotter or thermal receipt printer. It's a physical computing project with a retro 80's terminal aesthetic.
+Three builds:
 
-There are three ways to build with it:
+| | Build | What it does |
+|---|-------|-------------|
+| 🖊️ | AxiDraw desktop | Type or speak → pen-plotted output on paper |
+| 🧾 | Thermal printer desktop | RSS feeds → headlines printed on receipt paper |
+| 📰 | Pi Zero news appliance | Always-on headless ticker, configure from your phone |
 
-| Build | What it does |
-|-------|-------------|
-| 🖊️ **AxiDraw desktop** | Type or speak → pen-plotted output on paper |
-| 🧾 **Thermal printer desktop** | RSS feeds → headlines printed on receipt paper |
-| 📰 **Pi Zero news appliance** | Always-on headless ticker, configure from your phone |
+---
+
+## A Note from jampick
+
+Hey folks — this is my first real use of Claude Code, so I hope you find it useful. I had some old hardware sitting around: an AxiDraw plotter and a thermal printer. Strange what you accumulate. I always wanted to use them in a coding project but never had the skills to interface with them directly. When Claude came along I knew that was the missing piece. Now these old printers actually get used — the thermal one is my analog news reader (just top stories), and the AxiDraw prints handwritten cards since my penmanship is illegible. I'm sure you'll find even better uses for this.
 
 ---
 
 ## Web UI (Pi Appliance)
 
-The Pi appliance is configured entirely through a browser-based interface served from the Pi itself — no SSH needed for day-to-day use.
+Day-to-day the Pi is controlled entirely from your browser — no SSH required. Open `http://PI_IP:5000` from any device on your network.
 
-**Configuration** — add RSS feeds, set the poll interval, quiet hours, and auto-update schedule:
+**Configuration** — RSS feeds, poll interval, quiet hours, auto-update:
 
 ![PrintPulse web UI — configuration](docs/screenshot-config.png)
 
-**Service control** — start, stop, update the watcher, and send a test print with one click:
+**Service control** — start, stop, update, test print:
 
 ![PrintPulse web UI — service control](docs/screenshot-controls.png)
 
-**Print history** — see every headline that's been sent to the printer, with source and timestamp:
+**Print history** — every headline with source and timestamp:
 
 ![PrintPulse web UI — print history](docs/screenshot-history.png)
 
@@ -34,41 +38,33 @@ The Pi appliance is configured entirely through a browser-based interface served
 
 ## What You Need
 
-### For AxiDraw plotting
+### AxiDraw build
 
-| Item | Notes |
-|------|-------|
-| **AxiDraw pen plotter** | [AxiDraw V3](https://shop.evilmadscientist.com/productsmenu/846) or any AxiDraw model. ~$475. |
-| **Pens** | Felt-tip or ballpoint. Pilot G2, Uni-ball, Staedtler — anything that fits the AxiDraw pen holder. |
-| **Paper** | Copy paper works great. |
-| **A computer** | Windows, macOS, or Linux with Python 3.9+. |
+- [AxiDraw V3](https://shop.evilmadscientist.com/productsmenu/846) or any AxiDraw model (~$475)
+- Pens — Pilot G2, Uni-ball, Staedtler, anything that fits the pen holder
+- Paper — copy paper is fine
+- A computer with Python 3.9+
 
-### For thermal printing
+### Thermal printer build
 
-| Item | Notes |
-|------|-------|
-| **58mm USB thermal printer** | [Travelmate 58mm Thermal Printer](https://www.amazon.com/dp/B08V4H7T47) — ~$35 on Amazon. Any ESC/POS compatible 58mm printer works. |
-| **Paper rolls** | 58mm thermal receipt paper. Usually included; replacements are cheap and widely available. |
-| **A computer** | Windows, macOS, or Linux with Python 3.9+. |
+- [Travelmate 58mm USB thermal printer](https://www.amazon.com/dp/B08V4H7T47) (~$35) — or any ESC/POS compatible 58mm printer
+- 58mm paper rolls (usually included; cheap to replace)
+- A computer with Python 3.9+
 
-### For the Pi Zero news appliance (standalone)
+### Pi Zero appliance (standalone, always-on)
 
-Everything above for thermal printing, plus:
+Everything in the thermal printer list, plus:
 
-| Item | Notes |
-|------|-------|
-| **Raspberry Pi Zero 2 W** | ~$15. The "W" means Wi-Fi is built in. [Buy here](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/) |
-| **Micro SD card** | 16GB or larger. Any brand. |
-| **Micro USB OTG adapter** | Converts the Pi's micro-USB port to a standard USB-A port for the printer. ~$5 on Amazon, search "micro USB OTG adapter". |
-| **Power supply** | Micro USB 5V/2.5A. An old phone charger works. |
-
-> The Pi appliance has its own detailed setup guide: **[pi/README.md](pi/README.md)**
+- Raspberry Pi Zero 2 W (~$15) — [buy here](https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/)
+- Micro SD card, 16GB+
+- Micro USB OTG adapter (~$5) — converts the Pi's USB port so you can plug in the printer
+- 5V micro USB power supply (an old phone charger works)
 
 ---
 
-## Build 1: AxiDraw Desktop Setup
+## Build 1: AxiDraw Desktop
 
-### 1. Install PrintPulse
+### Install
 
 ```bash
 git clone https://github.com/jampick/PrintPulse.git
@@ -76,44 +72,36 @@ cd PrintPulse
 pip install -e .
 ```
 
-### 2. Install the AxiDraw API
+### Install the AxiDraw API
 
-The AxiDraw Python library isn't on PyPI — Evil Mad Scientist distributes it directly.
+The AxiDraw library isn't on PyPI — Evil Mad Scientist distributes it separately:
 
-1. Download the API zip: [AxiDraw API (cdn.evilmadscientist.com)](https://cdn.evilmadscientist.com/dl/ad/public/AxiDraw_API.zip)
-2. Extract the zip
-3. Open a terminal inside the extracted folder and run:
-   ```bash
-   pip install .
-   ```
+1. Download: [AxiDraw API zip](https://cdn.evilmadscientist.com/dl/ad/public/AxiDraw_API.zip)
+2. Extract and run `pip install .` from inside the extracted folder
 
-### 3. Connect your AxiDraw
+### Plot something
 
-Plug the AxiDraw into USB. Load paper and a pen. PrintPulse will home the plotter and start drawing immediately on first run.
-
-### 4. Plot something
+Plug in the AxiDraw, load paper and a pen, then:
 
 ```bash
-# Type text and send to the AxiDraw
+# Type and plot
 printpulse -i text -t "Hello from the plotter!"
 
-# Record from your microphone (press Enter to stop recording)
+# Record from mic (press Enter to stop)
 printpulse -i mic
 
-# Use a different font
+# Different font
 printpulse -i text -t "In the year 2525" -f gothic
 
-# Dry run — renders SVG without touching the hardware
+# Render to SVG without touching the hardware
 printpulse -i text -t "Test layout" --dry-run
 ```
 
 ---
 
-## Build 2: Thermal Printer Desktop Setup
+## Build 2: Thermal Printer Desktop
 
-A great way to print headlines, quotes, or dictated notes on receipt paper — cheap, instant, and oddly satisfying.
-
-### 1. Install PrintPulse
+### Install
 
 ```bash
 git clone https://github.com/jampick/PrintPulse.git
@@ -121,30 +109,17 @@ cd PrintPulse
 pip install -e .
 ```
 
-**Windows only** — also install the Win32 printing library:
+On Windows, also run `pip install pywin32`. On Linux the printer shows up at `/dev/usb/lp0` with no extra drivers needed.
+
+### Print something
 
 ```bash
-pip install pywin32
-```
-
-### 2. Connect the printer
-
-Plug the USB thermal printer in and turn it on. On **Windows**, it should appear automatically in your device list. On **Linux**, it shows up at `/dev/usb/lp0` — check with:
-
-```bash
-ls /dev/usb/lp0
-```
-
-### 3. Print something
-
-```bash
-# Print a line of text on the thermal printer
 printpulse -i text -t "Extra! Extra!" --printer thermal
 
-# Watch a news feed and print new headlines as they appear
+# Watch a feed and print new headlines as they appear
 printpulse --watch "https://feeds.npr.org/1002/rss.xml" --printer thermal
 
-# Watch multiple feeds, print max 3 stories per cycle
+# Multiple feeds
 printpulse --watch "https://feeds.npr.org/1002/rss.xml" \
            --watch "http://feeds.bbci.co.uk/news/world/rss.xml" \
            --printer thermal --max-prints 3
@@ -154,260 +129,163 @@ printpulse --watch "https://feeds.npr.org/1002/rss.xml" \
 
 ## Build 3: Pi Zero News Appliance
 
-Turn a $15 Pi Zero into a standalone, always-on news ticker. It runs headlessly — no screen, no keyboard needed after setup. Configure everything from your phone's browser.
-
-**You do NOT need**: a monitor, keyboard, mouse, or HDMI cable. Everything is done over Wi-Fi.
+The goal is a box that sits on a shelf, stays on, and prints news. No screen, no keyboard after initial setup — everything runs over Wi-Fi.
 
 ### Step 1 — Flash the SD card
 
-1. Download and install **[Raspberry Pi Imager](https://www.raspberrypi.com/software/)** on your computer.
-2. Insert your micro SD card.
-3. Open Imager and:
-   - **Choose OS** → Raspberry Pi OS (other) → **Raspberry Pi OS Lite (32-bit)**
-   - **Choose Storage** → select your SD card
-4. Click the **gear icon ⚙** (bottom-right) and fill in:
-   - ✅ Enable SSH → "Use password authentication"
-   - ✅ Set username and password (e.g. username: `pi`, pick a password)
-   - ✅ Configure wireless LAN → enter your Wi-Fi name and password
-   - ✅ Set locale / timezone
-5. Click **Write** and wait ~5 minutes.
-6. Put the SD card in the Pi and plug in power. Give it 2–3 minutes to boot and connect to Wi-Fi on first start.
+Download [Raspberry Pi Imager](https://www.raspberrypi.com/software/), insert your SD card, and:
 
-### Step 2 — Find your Pi's IP address
+- Choose **Raspberry Pi OS Lite (32-bit)** under "Raspberry Pi OS (other)"
+- Click the gear icon ⚙ before writing — this is where you pre-configure SSH, Wi-Fi credentials, and your timezone so you don't need a monitor at all
 
-**Option A — Your router**: Log into your router admin page (usually `192.168.1.1`). Look for `raspberrypi` in the device list.
+Write it out (~5 min), put the card in the Pi, and plug in power. First boot takes a couple of minutes.
 
-**Option B — Command line** (Windows):
+### Step 2 — Find the Pi on your network
+
+Check your router's device list for `raspberrypi`, or from your computer:
+
 ```
 ping raspberrypi.local
 ```
-If it responds, the IP is shown. Otherwise try `arp -a` and look for a new device.
 
-**Option C — Fing app**: Free network scanner for your phone. Shows all devices on your Wi-Fi with their IPs.
+If that doesn't work, the [Fing app](https://www.fing.com/products/fing-app) (free, phone) will find it in a few seconds.
 
-### Step 3 — SSH into the Pi
-
-Open a terminal (Command Prompt or PowerShell on Windows):
+### Step 3 — SSH in
 
 ```bash
 ssh pi@YOUR_PI_IP
 ```
 
-Type `yes` when asked about the fingerprint, then enter your password. You'll see:
+Type `yes` on the fingerprint prompt, enter your password. You'll land at `pi@raspberrypi:~ $`.
 
-```
-pi@raspberrypi:~ $
-```
-
-You're in.
-
-### Step 4 — Run the setup script
-
-One command installs and configures everything:
+### Step 4 — Run setup
 
 ```bash
 git clone https://github.com/jampick/PrintPulse.git
 bash PrintPulse/pi/setup.sh
 ```
 
-This takes about 5–10 minutes on a Pi Zero (slow processor — be patient). It installs Python packages, configures auto-start on boot, and starts the web UI.
-
-When it finishes you'll see something like:
-
-```
-╔═════════════════════════════════════════════════════╗
-║              SETUP COMPLETE!                       ║
-║                                                     ║
-║  Web UI:  http://192.168.1.42:5000                  ║
-╚═════════════════════════════════════════════════════╝
-```
-
-Reboot once to activate printer permissions:
+Takes 5–10 minutes on a Pi Zero. When it finishes, reboot once:
 
 ```bash
 sudo reboot
 ```
 
-### Step 5 — Connect the thermal printer
+### Step 5 — Connect the printer
 
-1. Plug the **USB OTG adapter** into the Pi's data USB port (the one closer to the center of the board — NOT the power port).
-2. Plug your **thermal printer's USB cable** into the OTG adapter.
-3. Power on the printer.
-
-Verify the Pi can see the printer:
+The Pi Zero has two micro-USB ports — one is power-only, the other is data. Use the data port (closer to center). Plug in your OTG adapter there, then connect the printer to that. Power on the printer and check the Pi sees it:
 
 ```bash
 ls /dev/usb/lp0
 ```
 
-If `/dev/usb/lp0` appears, you're good to go.
-
 ### Step 6 — Configure from your phone
 
-1. Open a browser on your phone or laptop.
-2. Go to `http://YOUR_PI_IP:5000`.
-3. Paste in your RSS feed URLs (one per line) and set your poll interval.
-4. Click **[ SAVE & RESTART ]**.
+Open `http://YOUR_PI_IP:5000`, paste in your RSS feed URLs, and hit **[ SAVE & RESTART ]**. Headlines start printing as new stories appear.
 
-Good starter feeds:
-
+Some feeds to start with:
 ```
 https://feeds.npr.org/1002/rss.xml
 http://feeds.bbci.co.uk/news/world/rss.xml
 https://rsshub.app/apnews/topics/apf-topnews
+https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml
 ```
 
-Headlines will start printing as new stories appear. Tear them off the printer like a real wire service terminal.
+After that, you don't need SSH again. Settings live at `http://YOUR_PI_IP:5000`, the **Update** button pulls the latest code from GitHub, and everything restarts automatically on power loss.
 
-### Daily use
-
-Once set up you never need to SSH in again:
-- The Pi starts automatically on every boot
-- Change feeds or settings from `http://YOUR_PI_IP:5000` on any device on your network
-- The **Update** button on the web UI pulls the latest code from GitHub and restarts
-
-### Pi troubleshooting
+### Troubleshooting
 
 ```bash
 # Is the watcher running?
 sudo systemctl status printpulse
 
-# Watch live logs
+# Live logs
 sudo journalctl -u printpulse -f
 
-# Printer not showing up?
-lsusb               # lists all USB devices
-ls -la /dev/usb/    # check for lp0
+# Printer not found?
+lsusb
+ls -la /dev/usb/
 
-# Restart everything
+# Restart
 sudo systemctl restart printpulse printpulse-web
 ```
 
 ---
 
-## Watch Mode (RSS/Atom Feeds)
+## Watch Mode
 
-Watch mode polls RSS feeds on an interval and prints new stories as they appear. It tracks what's already been printed so you never get duplicates.
+Polls feeds on a configurable interval and prints new stories. Remembers what it's already printed so you don't get duplicates across restarts.
 
 ```bash
-# AP News top stories
-printpulse --watch "https://rsshub.app/apnews/topics/apf-topnews"
-
-# BBC World News
+# Single feed
 printpulse --watch "http://feeds.bbci.co.uk/news/world/rss.xml"
 
-# NPR News
-printpulse --watch "https://feeds.npr.org/1002/rss.xml"
-
-# Multiple feeds, print to thermal, poll every 10 minutes
+# Multiple feeds, thermal printer, check every 10 minutes
 printpulse --watch "https://feeds.npr.org/1002/rss.xml" \
            --watch "http://feeds.bbci.co.uk/news/world/rss.xml" \
            --printer thermal --watch-interval 600
 
-# Quiet hours — suppress printing between 11pm and 7am
-# Items found overnight are saved and printed when quiet hours end
+# Quiet hours — nothing prints overnight, queued items print in the morning
 printpulse --watch "https://feeds.npr.org/1002/rss.xml" \
            --printer thermal \
            --quiet-start 23:00 --quiet-end 07:00
 
-# Print to both AxiDraw and thermal simultaneously
-printpulse --watch "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml" \
-           --printer both
+# Both printers at once
+printpulse --watch "..." --printer both
 ```
 
-Some good free RSS feeds to start with:
-
-| Feed | URL |
-|------|-----|
-| NPR News | `https://feeds.npr.org/1002/rss.xml` |
-| BBC World | `http://feeds.bbci.co.uk/news/world/rss.xml` |
-| AP Top News | `https://rsshub.app/apnews/topics/apf-topnews` |
-| NY Times Home | `https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml` |
-| Reuters Top News | `https://feeds.reuters.com/reuters/topNews` |
+Items found during quiet hours are saved to disk, not just skipped — so nothing gets lost even if the story has rotated out of the feed by morning.
 
 ---
 
 ## Voice Input
 
-PrintPulse uses [OpenAI Whisper](https://github.com/openai/whisper) for transcription — it runs entirely locally, no internet connection or API key required.
+Uses [OpenAI Whisper](https://github.com/openai/whisper) running locally — no API key or internet connection required for transcription.
 
 ```bash
-# Record from mic (press Enter to stop)
-printpulse -i mic
-
-# Record for exactly 15 seconds
-printpulse -i mic -d 15
-
-# Transcribe an existing audio file
+printpulse -i mic           # press Enter to stop
+printpulse -i mic -d 15     # record for 15 seconds
 printpulse -i file -a recording.wav
 ```
 
-On first use, Whisper downloads the model automatically (~150MB for the default `base` model). Larger models are more accurate but slower:
-
-| Model | Size | Speed | Best for |
-|-------|------|-------|----------|
-| `tiny` | 39M | Fastest | Drafts, quick notes |
-| `base` | 74M | Fast | Daily use (default) |
-| `small` | 244M | Moderate | Better accuracy |
-| `medium` | 769M | Slow | High accuracy |
-| `large` | 1.5B | Slowest | Best accuracy |
+Whisper downloads the model on first use. The `base` model (~150MB) is fine for most uses. If accuracy matters more than speed, try `small` or `medium`:
 
 ```bash
-# Use a larger model
 printpulse -i mic -m small
 ```
+
+Models in order: `tiny` → `base` (default) → `small` → `medium` → `large`
 
 ---
 
 ## Fonts
 
-PrintPulse uses [Hershey fonts](https://en.wikipedia.org/wiki/Hershey_fonts) — single-stroke vector fonts originally designed for CNC and pen plotters. Each letter is drawn as continuous pen strokes, not filled outlines.
+PrintPulse uses [Hershey fonts](https://en.wikipedia.org/wiki/Hershey_fonts) — single-stroke vector fonts designed for plotters and CNC machines, where each letter is drawn as a continuous path rather than filled outlines. They're what makes the output look hand-drawn.
 
 ```bash
 printpulse -i text -t "Hello" -f cursive
 printpulse -i text -t "Hello" -f gothic
-printpulse -i text -t "Hello" -f block
+printpulse -i text -t "Hello" -f roman
 ```
 
-| Friendly Name | Style |
-|--------------|-------|
-| `block` | Clean architectural lettering (default) |
-| `cursive` | Flowing handwriting |
-| `script-bold` | Heavy calligraphic |
-| `roman` | Classic serif |
-| `typewriter` | Monospaced feel |
-| `times` | Serif body text |
-| `gothic` | Old English blackletter |
-| `italic` | Sans-serif italic |
+Available: `block` (default), `cursive`, `script-bold`, `roman`, `typewriter`, `times`, `gothic`, `italic`, and several others including Greek, Cyrillic, Japanese, and symbol sets.
 
 ---
 
 ## Letter & Journal Modes
 
-### Letter mode
-
-Formats text as a formal letter with a decorative header:
+**Letter mode** formats text with a decorative letterhead — useful for actually printing correspondence on the plotter:
 
 ```bash
-# Write a letter from a text file
 printpulse -i text -t letter.txt --letter
-
-# Compose interactively
-printpulse --letter-template
-
-# Use a stationery profile
+printpulse --letter-template        # interactive compose
 printpulse -i text -t letter.txt --letter --stationery victorian
 ```
 
-### Journal mode
-
-Adds a timestamp and tracks your position across pages:
+**Journal mode** adds a timestamp and tracks page position across multiple entries:
 
 ```bash
-# Voice journal entry
 printpulse -i mic --journal
-
-# Text entry
 printpulse -i text -t "Finished the prototype today." --journal
 ```
 
@@ -416,26 +294,13 @@ printpulse -i text -t "Finished the prototype today." --journal
 ## Output Options
 
 ```bash
-# Dry run — renders SVG and shows a preview without printing
-printpulse -i text -t "Test" --dry-run
-
-# Send to thermal printer instead of AxiDraw
-printpulse -i text -t "Breaking news" --printer thermal
-
-# Send to both
-printpulse -i text -t "Hello" --printer both
-
-# Skip all confirmation prompts (useful in scripts)
-printpulse -i text -t "Quick print" -y
-
-# Save the generated SVG to a file
-printpulse -i text -t "Hello" -o output.svg
-
-# Portrait orientation (AxiDraw default is landscape)
-printpulse -i text -t "Hello" --portrait
-
-# Amber terminal theme instead of green
-printpulse -i text -t "Hello" --theme amber
+--dry-run           # render SVG and preview without printing
+--printer thermal   # thermal instead of AxiDraw
+--printer both      # both at once
+-y                  # skip confirmation prompts
+-o output.svg       # save the SVG
+--portrait          # portrait orientation (default is landscape)
+--theme amber       # amber instead of green terminal theme
 ```
 
 ---
@@ -461,21 +326,18 @@ printpulse [-h] [-i {mic,file,text}] [-a AUDIO_FILE] [-t TEXT]
 
 ## Configuration
 
-User config and state files live in your home directory:
+State files in your home directory:
 
 ```
-~/.printpulse_seen.json        # Tracks which RSS items have been printed
-~/.printpulse_history.json     # Print history log
-~/.printpulse_retry.json       # Retry queue for failed prints
-~/.printpulse_quiet_queue.json # Items saved during quiet hours
-~/.printpulse/
-  config.json                  # Global settings and defaults
-  stationery/                  # Custom stationery profiles (JSON)
+~/.printpulse_seen.json        # which RSS items have been printed
+~/.printpulse_history.json     # print history
+~/.printpulse_retry.json       # retry queue for failed prints
+~/.printpulse_quiet_queue.json # items held during quiet hours
+~/.printpulse/config.json      # settings and defaults
+~/.printpulse/stationery/      # custom letterhead profiles (JSON)
 ```
 
-### Custom stationery
-
-Drop JSON files in `~/.printpulse/stationery/` to define your own letterhead:
+Custom stationery example:
 
 ```json
 {
@@ -499,22 +361,22 @@ Drop JSON files in `~/.printpulse/stationery/` to define your own letterhead:
 
 ```
 printpulse/
-  app.py           CLI orchestrator & argparse
+  app.py           CLI + argparse
   config.py        Config dataclass, font map, page presets
-  ui.py            Retro terminal UI (Rich library)
-  speech.py        Microphone recording & Whisper transcription
-  text_to_svg.py   Hershey font rendering & SVG generation
-  plotter.py       AxiDraw control (pyaxidraw)
-  thermal.py       ESC/POS thermal printer output
-  watch.py         RSS/Atom feed polling, quiet hours, retry queue
+  ui.py            Retro terminal UI (Rich)
+  speech.py        Mic recording + Whisper transcription
+  text_to_svg.py   Hershey font rendering + SVG generation
+  plotter.py       AxiDraw control
+  thermal.py       ESC/POS thermal output
+  watch.py         RSS polling, quiet hours, retry queue
   letter.py        Letter document model
   journal.py       Timestamped journal entries
-  illustrations.py AI illustration pipeline (DALL-E + vtracer)
+  illustrations.py DALL-E + vtracer illustration pipeline
 
 pi/
-  webapp/          Flask web UI for the Pi appliance
-  setup.sh         One-command Pi setup script
-  appliance.py     Pi-specific config and entry point
+  webapp/          Flask web UI
+  setup.sh         One-command Pi setup
+  appliance.py     Pi-specific config
 ```
 
 ---
@@ -523,12 +385,12 @@ pi/
 
 - Python 3.9+
 - Windows, macOS, or Linux
-- AxiDraw pen plotter (optional — use `--dry-run` without hardware)
+- AxiDraw plotter (optional — `--dry-run` works without hardware)
 - ESC/POS thermal printer (optional)
-- Microphone (optional — for voice input)
+- Microphone (optional)
 
 ---
 
 ## License
 
-GNU General Public License v3.0 — see [LICENSE](LICENSE) for details.
+GNU General Public License v3.0 — see [LICENSE](LICENSE).
