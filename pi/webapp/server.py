@@ -15,12 +15,14 @@ Security features:
 
 import functools
 import ipaddress
+import json
 import logging
 import os
 import re
 import secrets
 import subprocess
 import sys
+import threading
 import time
 from urllib.parse import urlparse
 
@@ -90,6 +92,136 @@ _APP_VERSION = _get_version_info()
 # Load secret key from config (generated during setup)
 _cfg = load_config()
 app.secret_key = _cfg.get("secret_key") or secrets.token_hex(32)
+
+
+# ─── Auto-Update ────────────────────────────────────────────────────────────
+
+_UPDATE_LOG_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_update_log.json")
+_UPDATE_LOG_MAX = 50
+
+# In-memory record of the most recent auto-update attempt
+_auto_update_state: dict = {
+    "last_check": None,   # ISO timestamp of last check
+    "last_result": None,  # human-readable result string
+    "last_changed": False,  # whether git pull fetched new commits
+}
+
+
+def _load_update_log() -> list[dict]:
+    """Load auto-update log from disk."""
+    if os.path.isfile(_UPDATE_LOG_FILE):
+        try:
+            with open(_UPDATE_LOG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+
+def _append_update_log(result: str, changed: bool):
+    """Append one entry to the update log and trim to max size."""
+    from datetime import datetime
+    log = _load_update_log()
+    log.append({
+        "timestamp": datetime.now().strftime("%Y-%m-%d %I:%M:%S %p"),
+        "result": result,
+        "changed": changed,
+    })
+    if len(log) > _UPDATE_LOG_MAX:
+        log = log[-_UPDATE_LOG_MAX:]
+    try:
+        from printpulse.secure_fs import secure_write_json
+        secure_write_json(_UPDATE_LOG_FILE, log)
+    except Exception as exc:
+        logger.warning("Could not write update log: %s", exc)
+
+
+def _run_auto_update() -> tuple[str, bool]:
+    """Run git pull and, if new commits landed, restart services.
+
+    Returns (result_message, changed) where changed is True if
+    git pull fetched new commits.
+    """
+    global _APP_VERSION
+
+    # Git pull
+    try:
+        result = subprocess.run(
+            ["git", "-C", _project_root, "pull", "--ff-only"],
+            capture_output=True, text=True, timeout=30,
+        )
+        pull_output = (result.stdout.strip() or result.stderr.strip()
+                       or "no output")
+        logger.info("Auto-update git pull: %s", pull_output)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        msg = f"git pull failed: {type(exc).__name__}"
+        logger.error("Auto-update %s", msg)
+        return msg, False
+
+    changed = "already up to date" not in pull_output.lower()
+
+    if not changed:
+        return "Already up to date.", False
+
+    # New commits — restart services
+    msgs = [f"git pull: {pull_output}"]
+    try:
+        subprocess.run(["sudo", "systemctl", "restart", "printpulse"], timeout=10)
+        msgs.append("printpulse: restarted")
+        logger.info("Auto-update restarted printpulse")
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        msgs.append(f"printpulse: restart failed ({type(exc).__name__})")
+        logger.error("Auto-update failed to restart printpulse: %s", exc)
+
+    # Refresh in-process version string before restarting the web service
+    _APP_VERSION = _get_version_info()
+
+    # Restart printpulse-web last (kills this process — use Popen so we don't block)
+    try:
+        subprocess.Popen(["sudo", "systemctl", "restart", "printpulse-web"])
+        msgs.append("printpulse-web: restarting")
+        logger.info("Auto-update triggered printpulse-web restart")
+    except OSError as exc:
+        msgs.append(f"printpulse-web: restart failed ({type(exc).__name__})")
+        logger.error("Auto-update failed to restart printpulse-web: %s", exc)
+
+    return " | ".join(msgs), True
+
+
+def _auto_update_worker():
+    """Daemon thread: check for code updates on the configured schedule."""
+    # Record startup time as the baseline so we don't update immediately
+    last_check_at = time.time()
+
+    while True:
+        time.sleep(60)  # Wake up every minute to re-read config
+        try:
+            cfg = load_config()
+            if not cfg.get("auto_update_enabled", False):
+                continue
+            interval_sec = int(cfg.get("auto_update_interval", 24)) * 3600
+            now = time.time()
+            if now - last_check_at < interval_sec:
+                continue
+
+            last_check_at = now
+            from datetime import datetime
+            check_ts = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+            logger.info("Auto-update: running scheduled check")
+
+            result_msg, changed = _run_auto_update()
+
+            _auto_update_state["last_check"] = check_ts
+            _auto_update_state["last_result"] = result_msg
+            _auto_update_state["last_changed"] = changed
+            _append_update_log(result_msg, changed)
+        except Exception as exc:
+            logger.error("Auto-update worker error: %s", exc)
+
+
+# Start the background auto-update thread
+_update_thread = threading.Thread(target=_auto_update_worker, daemon=True, name="auto-updater")
+_update_thread.start()
 
 
 # ─── Rate Limiting ──────────────────────────────────────────────────────────
@@ -330,6 +462,20 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
             if hh > 23 or mm > 59:
                 errors.append(f"{label} is not a valid time.")
 
+    # --- Auto-update ---
+    auto_update_enabled = form.get("auto_update_enabled") == "1"
+    _valid_intervals = {1, 6, 12, 24}
+    try:
+        auto_update_interval = int(form.get("auto_update_interval", 24))
+    except (ValueError, TypeError):
+        errors.append("Auto-update interval must be a number.")
+        auto_update_interval = 24
+    if auto_update_interval not in _valid_intervals:
+        errors.append(
+            f"Auto-update interval must be one of: {', '.join(str(v) for v in sorted(_valid_intervals))} hours."
+        )
+        auto_update_interval = 24
+
     # --- Printer device ---
     printer_device = form.get("printer_device", "/dev/usb/lp0").strip()
     if len(printer_device) > 64:
@@ -354,6 +500,8 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         "quiet_enabled": quiet_enabled,
         "quiet_start": quiet_start,
         "quiet_end": quiet_end,
+        "auto_update_enabled": auto_update_enabled,
+        "auto_update_interval": auto_update_interval,
     }, []
 
 
@@ -433,6 +581,8 @@ def save():
     config["quiet_enabled"] = validated["quiet_enabled"]
     config["quiet_start"] = validated["quiet_start"]
     config["quiet_end"] = validated["quiet_end"]
+    config["auto_update_enabled"] = validated["auto_update_enabled"]
+    config["auto_update_interval"] = validated["auto_update_interval"]
     save_config(config)
 
     # Restart the watcher service to pick up new config
@@ -573,7 +723,23 @@ def status_api():
     return jsonify({
         "service": _service_status(),
         "printer": _printer_detected(),
+        "auto_update": _auto_update_state.copy(),
     })
+
+
+@app.route("/update_log")
+@require_auth
+def update_log():
+    """Show auto-update log page."""
+    items = _load_update_log()
+    items = list(reversed(items))  # newest first
+    config = load_config()
+    return render_template(
+        "update_log.html",
+        items=items,
+        config=config,
+        version=_APP_VERSION,
+    )
 
 
 if __name__ == "__main__":

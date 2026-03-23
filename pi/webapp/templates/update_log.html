@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrintPulse — Update Log</title>
+    <style>
+        :root {
+            {% if config.theme == 'amber' %}
+            --primary: #ffaa00;
+            --mid: #aa7700;
+            --dim: #665500;
+            --border: #6b5800;
+            --help: #5a4400;
+            --glow: #ffaa00;
+            {% else %}
+            --primary: #33ff33;
+            --mid: #1a8a1a;
+            --dim: #1a4a1a;
+            --border: #1a4a1a;
+            --help: #0d5a0d;
+            --glow: #33ff33;
+            {% endif %}
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0a0a0a;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.6em;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px var(--glow);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--mid);
+            margin-bottom: 25px;
+            font-size: 0.85em;
+        }
+
+        .panel {
+            border: 2px solid var(--border);
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #0d0d0d;
+        }
+
+        .panel-title {
+            color: var(--primary);
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+
+        th {
+            text-align: left;
+            color: var(--mid);
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--dim);
+            vertical-align: top;
+            word-break: break-word;
+        }
+
+        .changed-yes { color: var(--primary); }
+        .changed-no  { color: var(--mid); }
+
+        .empty {
+            color: var(--help);
+            font-style: italic;
+            padding: 20px 0;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            color: var(--border);
+            font-size: 0.75em;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>[ PRINTPULSE ]</h1>
+        <div>
+            <a href="/" style="color:var(--mid); text-decoration:none; font-size:0.8em;">[ HOME ]</a>
+            <a href="/logout" style="color:var(--border); text-decoration:none; font-size:0.8em;">[ LOGOUT ]</a>
+        </div>
+    </div>
+    <div class="subtitle">Auto-Update Log</div>
+
+    <div class="panel">
+        <div class="panel-title">// UPDATE HISTORY</div>
+        {% if items %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Updated?</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td style="white-space:nowrap; color:var(--mid);">{{ item.timestamp }}</td>
+                    <td class="{% if item.changed %}changed-yes{% else %}changed-no{% endif %}">
+                        {% if item.changed %}YES{% else %}no{% endif %}
+                    </td>
+                    <td>{{ item.result }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">No auto-update checks recorded yet.</div>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        PrintPulse v{{ version }} &mdash; Raspberry Pi Zero
+    </div>
+</body>
+</html>

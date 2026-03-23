@@ -31,6 +31,8 @@ def default_config() -> dict:
         "auth_user": "",
         "auth_hash": "",
         "secret_key": "",
+        "auto_update_enabled": False,
+        "auto_update_interval": 24,  # hours between checks (1, 6, 12, or 24)
     }
 
 
