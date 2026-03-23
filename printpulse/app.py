@@ -6,13 +6,12 @@ from rich.text import Text
 
 from printpulse import ui
 from printpulse.config import Config, FONT_MAP
-from printpulse import speech
-from printpulse import text_to_svg
-from printpulse import plotter
-from printpulse import thermal
-from printpulse import journal
 from printpulse.secure_fs import check_permissions
 from printpulse.logging_config import setup_logging
+
+# Heavy modules (speech, text_to_svg, plotter, journal) are imported
+# lazily where needed so the Pi appliance doesn't pull in numpy/svgwrite
+# just to run thermal watch mode.
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -255,6 +254,7 @@ def run(argv: list[str]):
 
     # ─── JOURNAL RESET ───
     if args.journal_reset:
+        from printpulse import journal
         journal.reset_journal()
         ui.success_message("Journal reset. Ready for a new page.", theme)
         if not journal_mode:
@@ -286,6 +286,7 @@ def run(argv: list[str]):
     # ─── LETTER MODE ───
     if args.letter or args.letter_template:
         from printpulse import stationery, letter as letter_mod
+        from printpulse import speech, text_to_svg, plotter
 
         # Load stationery profile
         profile = stationery.load_profile(args.stationery)
@@ -401,7 +402,7 @@ def run(argv: list[str]):
 
     # ─── WATCH MODE ───
     if args.watch:
-        from printpulse import watch
+        from printpulse import watch, thermal, journal
         # Resolve font upfront for watch mode
         if args.font:
             resolved = _resolve_font(args.font)
@@ -448,6 +449,7 @@ def run(argv: list[str]):
 
             # ── AXIDRAW PLOTTER ──
             if use_axidraw:
+                from printpulse import text_to_svg, plotter
                 plot_text = text
                 start_line = 0
                 max_lines = journal.total_lines(config)
@@ -511,6 +513,9 @@ def run(argv: list[str]):
             theme,
         )
         input_mode = {"M": "mic", "F": "file", "T": "text"}[input_mode_key]
+
+    # Lazy-import heavy modules for interactive mode
+    from printpulse import speech, text_to_svg, plotter, thermal, journal
 
     # ─── ACQUIRE TEXT ───
     text = None

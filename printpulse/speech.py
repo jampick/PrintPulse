@@ -2,8 +2,6 @@ import os
 import queue
 import threading
 
-import numpy as np
-
 from printpulse import ui
 from printpulse.secure_fs import secure_tempfile, secure_delete
 
@@ -111,6 +109,7 @@ def record_audio(
                             chunk = audio_queue.get(timeout=0.05)
                             sfile.write(chunk)
                             # Compute RMS level
+                            import numpy as np
                             rms = np.sqrt(np.mean(chunk.astype(np.float32) ** 2)) / 32768.0
                             level = min(rms * 5, 1.0)  # Scale for visibility
                             level_text = ui.audio_level_bar(level, theme_name=theme_name)
@@ -128,13 +127,15 @@ def record_audio(
     return tmp_path
 
 
-def _load_audio_as_float32(audio_path: str) -> np.ndarray:
+def _load_audio_as_float32(audio_path: str):
     """Load audio file as float32 numpy array at 16kHz mono, using soundfile.
 
     This avoids requiring ffmpeg, which Whisper normally uses via its
     own load_audio() function.
     """
     import soundfile as sf
+
+    import numpy as np
 
     data, sr = sf.read(audio_path, dtype="float32")
 
