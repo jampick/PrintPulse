@@ -12,6 +12,7 @@ logger = logging.getLogger("printpulse.watch")
 SEEN_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_seen.json")
 HISTORY_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_history.json")
 RETRY_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_retry.json")
+QUIET_QUEUE_FILE = os.path.join(os.path.expanduser("~"), ".printpulse_quiet_queue.json")
 _MAX_HISTORY = 200  # Keep last N items
 _MAX_RETRIES = 3    # Max retry attempts per item
 
@@ -156,6 +157,38 @@ def _remove_from_retry(item_id: str):
     _save_retry_queue(queue)
 
 
+def _load_quiet_queue() -> list[dict]:
+    """Load quiet-hours queue: list of {id, title, summary, _source}."""
+    if os.path.isfile(QUIET_QUEUE_FILE):
+        try:
+            with open(QUIET_QUEUE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+
+def _save_quiet_queue(queue: list[dict]):
+    """Save quiet-hours queue to disk."""
+    secure_write_json(QUIET_QUEUE_FILE, queue)
+
+
+def _enqueue_quiet_items(items: list[dict]):
+    """Persist items to the quiet queue, skipping duplicates."""
+    queue = _load_quiet_queue()
+    existing_ids = {q.get("id") for q in queue}
+    for item in items:
+        if item.get("id") not in existing_ids:
+            queue.append({
+                "id": item.get("id", ""),
+                "title": item.get("title", ""),
+                "summary": item.get("summary", ""),
+                "_source": item.get("_source", ""),
+            })
+            existing_ids.add(item.get("id"))
+    _save_quiet_queue(queue)
+
+
 def mark_seen(items: list[dict]):
     """Mark items as seen so they won't be plotted again."""
     seen = _load_seen()
@@ -249,6 +282,38 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                     style=t["primary"],
                 ))
 
+                # ── QUIET QUEUE: flush items saved during quiet hours ──
+                quiet_queue = _load_quiet_queue()
+                if quiet_queue and not (use_quiet and _is_in_quiet_hours(quiet_start, quiet_end)):
+                    live.stop()
+                    ui.retro_panel(
+                        "QUIET QUEUE",
+                        f"Quiet hours ended — printing {len(quiet_queue)} saved item(s).",
+                        theme,
+                    )
+                    _save_quiet_queue([])  # Clear before printing so a crash doesn't re-print
+                    for i, q_item in enumerate(quiet_queue, 1):
+                        title = q_item["title"]
+                        source = q_item.get("_source", "")
+                        label = f"QUEUED {i}/{len(quiet_queue)}"
+                        if source:
+                            label += f" ({source})"
+                        ui.retro_panel(label, title, theme)
+                        fake_item = {
+                            "id": q_item["id"], "title": title,
+                            "summary": q_item.get("summary", ""),
+                            "_source": source,
+                        }
+                        try:
+                            plot_callback(title, feed_item=fake_item)
+                            _append_history([fake_item])
+                            _remove_from_retry(q_item["id"])
+                        except Exception as e:
+                            logger.error("Quiet queue print error for '%s': %s", title, e)
+                            ui.error_panel("Print error — check logs for details.", theme)
+                            _add_to_retry(fake_item)
+                    live.start()
+
                 # ── RETRY QUEUE: process failed items first ──
                 retry_queue = _load_retry_queue()
                 retryable = [r for r in retry_queue if r.get("attempts", 0) < _MAX_RETRIES]
@@ -326,13 +391,17 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
 
                 # Stop Live temporarily to print story content normally
                 if items:
-                    # Check quiet hours — skip printing but don't mark as seen
+                    # Check quiet hours — persist to queue and mark seen so they're not lost
                     if use_quiet and _is_in_quiet_hours(quiet_start, quiet_end):
+                        _enqueue_quiet_items(items)
+                        mark_seen(items)
+                        total_queued = len(_load_quiet_queue())
                         live.update(RText(
-                            f"  [{now}] {len(items)} new item(s) queued — quiet hours ({quiet_start}–{quiet_end})",
+                            f"  [{now}] {len(items)} item(s) saved to quiet queue "
+                            f"({total_queued} total) — quiet hours ({quiet_start}–{quiet_end})",
                             style=t["primary"],
                         ))
-                        logger.info("Quiet hours active (%s–%s): %d item(s) deferred",
+                        logger.info("Quiet hours active (%s–%s): %d item(s) saved to queue",
                                     quiet_start, quiet_end, len(items))
                         items = []  # Clear so we skip the print block below
 
