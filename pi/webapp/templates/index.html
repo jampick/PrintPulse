@@ -314,6 +314,10 @@
                 <button type="submit" class="btn-start" style="flex:1;">[ UPDATE ]</button>
             </form>
         </div>
+        <div class="btn-row" style="margin-top: 10px;">
+            <button type="button" id="test-print-btn" onclick="doTestPrint()" style="flex:1;">[ TEST PRINT ]</button>
+        </div>
+        <div id="test-print-result" style="display:none; margin-top:8px; font-size:0.85em; padding:6px 0;"></div>
     </div>
 
     <div class="footer">
@@ -322,6 +326,34 @@
 
     <!-- Live status polling -->
     <script>
+        function doTestPrint() {
+            var btn = document.getElementById('test-print-btn');
+            var result = document.getElementById('test-print-result');
+            btn.disabled = true;
+            btn.textContent = '[ PRINTING... ]';
+            result.style.display = 'none';
+
+            var formData = new FormData();
+            formData.append('csrf_token', '{{ csrf_token() }}');
+
+            fetch('/test_print', { method: 'POST', body: formData })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    result.style.display = 'block';
+                    result.style.color = data.ok ? 'var(--primary)' : '#ff3333';
+                    result.textContent = '> ' + data.message;
+                })
+                .catch(function() {
+                    result.style.display = 'block';
+                    result.style.color = '#ff3333';
+                    result.textContent = '> Request failed.';
+                })
+                .finally(function() {
+                    btn.disabled = false;
+                    btn.textContent = '[ TEST PRINT ]';
+                });
+        }
+
         setInterval(function() {
             fetch('/status')
                 .then(r => r.json())
