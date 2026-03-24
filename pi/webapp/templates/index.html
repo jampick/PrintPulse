@@ -158,6 +158,7 @@
             font-size: 0.95em;
             cursor: pointer;
             flex: 1;
+            white-space: nowrap;
         }
 
         button:hover {
@@ -185,18 +186,25 @@
             margin-top: 30px;
         }
 
+        .nav-links { white-space: nowrap; }
+        .nav-links a { white-space: nowrap; }
+
         @media (max-width: 600px) {
             .row { flex-direction: column; gap: 0; }
             .status-bar { flex-direction: column; gap: 10px; align-items: center; }
+            .header-bar { flex-direction: column; align-items: center; gap: 8px; }
+            .nav-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+            .btn-row { flex-wrap: wrap; }
+            h1 { font-size: 1.3em; }
         }
     </style>
 </head>
 <body>
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>[ PRINTPULSE ]</h1>
-        <div>
+    <div class="header-bar" style="display:flex; justify-content:space-between; align-items:center;">
+        <h1 style="white-space:nowrap;">[ PRINTPULSE ]</h1>
+        <div class="nav-links">
             <a href="/history" style="color:var(--mid); text-decoration:none; font-size:0.8em;">[ HISTORY ]</a>
-            <a href="/update_log" style="color:var(--mid); text-decoration:none; font-size:0.8em;">[ UPDATE LOG ]</a>
+            <a href="/update_log" style="color:var(--mid); text-decoration:none; font-size:0.8em;">[ UPDATE&nbsp;LOG ]</a>
             <a href="/logout" style="color:var(--border); text-decoration:none; font-size:0.8em;">[ LOGOUT ]</a>
         </div>
     </div>
