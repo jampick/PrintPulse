@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "printpulse"
-version = "0.1.6"
+version = "0.1.7"
 description = "PrintPulse: voice-to-print for AxiDraw pen plotters and thermal printers"
 requires-python = ">=3.9"
 dependencies = [
