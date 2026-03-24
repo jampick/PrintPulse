@@ -680,10 +680,13 @@ def history():
     from printpulse.watch import load_history
     items = load_history()
     items.reverse()  # newest first
+    total = len(items)
+    items = items[:10]  # cap to 10 most recent for mobile performance
     config = load_config()
     return render_template(
         "history.html",
         items=items,
+        total=total,
         config=config,
         version=_APP_VERSION,
     )

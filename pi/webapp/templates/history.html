@@ -119,7 +119,7 @@
     <div class="nav"><a href="/">&laquo; Back to Configuration</a></div>
 
     <div class="panel">
-        <div class="panel-title">// RECENTLY PRINTED ({{ items|length }} items)</div>
+        <div class="panel-title">// RECENTLY PRINTED (showing {{ items|length }} of {{ total }})</div>
         {% if items %}
             {% for item in items %}
             <div class="history-item">
