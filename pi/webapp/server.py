@@ -527,6 +527,35 @@ def _printer_detected() -> bool:
     return os.path.exists(device)
 
 
+def _quiet_hours_active() -> dict:
+    """Check if quiet hours are currently active.
+
+    Returns dict with 'enabled', 'active', 'start', 'end' keys.
+    """
+    from datetime import datetime, time as dtime
+
+    config = load_config()
+    enabled = config.get("quiet_enabled", False)
+    start_str = config.get("quiet_start", "22:00")
+    end_str = config.get("quiet_end", "08:00")
+
+    if not enabled:
+        return {"enabled": False, "active": False, "start": start_str, "end": end_str}
+
+    now = datetime.now().time()
+    start_h, start_m = int(start_str[:2]), int(start_str[3:5])
+    end_h, end_m = int(end_str[:2]), int(end_str[3:5])
+    start = dtime(start_h, start_m)
+    end = dtime(end_h, end_m)
+
+    if start <= end:
+        active = start <= now < end
+    else:
+        active = now >= start or now < end
+
+    return {"enabled": True, "active": active, "start": start_str, "end": end_str}
+
+
 # ─── Routes ──────────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -535,11 +564,13 @@ def index():
     config = load_config()
     status = _service_status()
     printer_ok = _printer_detected()
+    quiet_hours = _quiet_hours_active()
     return render_template(
         "index.html",
         config=config,
         status=status,
         printer_ok=printer_ok,
+        quiet_hours=quiet_hours,
         feeds_text="\n".join(config.get("feeds", [])),
         errors=[],
         version=_APP_VERSION,
@@ -724,6 +755,7 @@ def status_api():
         "service": _service_status(),
         "printer": _printer_detected(),
         "auto_update": _auto_update_state.copy(),
+        "quiet_hours": _quiet_hours_active(),
     })
 
 

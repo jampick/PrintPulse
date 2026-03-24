@@ -216,6 +216,11 @@
                   id="prt-dot"></span>
             <span>Printer: <strong id="prt-text">{% if printer_ok %}connected{% else %}not found{% endif %}</strong></span>
         </div>
+        <div class="status-item" id="quiet-status" style="{% if not quiet_hours.enabled %}display:none;{% endif %}">
+            <span class="dot {% if quiet_hours.active %}dot-yellow{% else %}dot-green{% endif %}"
+                  id="quiet-dot"></span>
+            <span>Quiet: <strong id="quiet-text">{% if quiet_hours.active %}active ({{ quiet_hours.start }}&ndash;{{ quiet_hours.end }}){% else %}off{% endif %}</strong></span>
+        </div>
     </div>
 
     <!-- Validation Errors -->
@@ -405,6 +410,23 @@
                             auEl.textContent = au.last_check + ' — ' + au.last_result;
                         } else {
                             auEl.textContent = 'not yet checked';
+                        }
+                    }
+
+                    // Quiet hours status
+                    if (data.quiet_hours) {
+                        var qh = data.quiet_hours;
+                        var qStatus = document.getElementById('quiet-status');
+                        var qDot = document.getElementById('quiet-dot');
+                        var qText = document.getElementById('quiet-text');
+                        if (qStatus) {
+                            qStatus.style.display = qh.enabled ? '' : 'none';
+                            if (qh.enabled) {
+                                qDot.className = 'dot ' + (qh.active ? 'dot-yellow' : 'dot-green');
+                                qText.textContent = qh.active
+                                    ? 'active (' + qh.start + '\u2013' + qh.end + ')'
+                                    : 'off';
+                            }
                         }
                     }
                 })
