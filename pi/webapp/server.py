@@ -41,6 +41,10 @@ from pi.appliance import load_config, save_config, verify_password
 
 app = Flask(__name__)
 
+# Register WiFi provisioning routes
+from pi.webapp.wifi_routes import wifi_bp
+app.register_blueprint(wifi_bp)
+
 
 # ─── Timezone Info ─────────────────────────────────────────────────────────
 

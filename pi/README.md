@@ -15,17 +15,19 @@ Configure everything from your phone or laptop via a web page on your local netw
 | **USB thermal printer** | Rongta 58mm, or any ESC/POS compatible receipt printer. ~$20-30 on Amazon. |
 | **Micro USB OTG adapter** | A tiny adapter that converts the Pi's micro-USB port to a regular USB port so you can plug in the printer. ~$5. Search "micro USB OTG adapter" on Amazon. |
 | **USB-C power supply** (for Zero 2 W) or **Micro USB power supply** (for Zero W) | The official Raspberry Pi power supply works great. Any 5V/2.5A phone charger will also work. |
-| **A computer** | Your Windows PC, to set up the SD card and SSH in. You only need this for initial setup. |
+| **A computer or phone** | For initial SD card flashing and WiFi setup. |
 
 **You do NOT need**: a monitor, keyboard, mouse, or HDMI cable. We'll set everything up "headlessly" over Wi-Fi.
 
 ---
 
-## Step 1: Flash the SD Card
+## Getting Started (New OOBE Flow)
 
-This puts the operating system onto your SD card.
+PrintPulse has a built-in WiFi setup experience. On first boot, the Pi creates its own WiFi hotspot so you can configure it from your phone — no need to pre-configure WiFi credentials.
 
-1. **Download Raspberry Pi Imager** from [raspberrypi.com/software](https://www.raspberrypi.com/software/) and install it on your Windows PC.
+### Step 1: Flash the SD Card
+
+1. **Download Raspberry Pi Imager** from [raspberrypi.com/software](https://www.raspberrypi.com/software/) and install it.
 
 2. **Insert your SD card** into your PC (use an adapter if needed).
 
@@ -34,74 +36,28 @@ This puts the operating system onto your SD card.
      - Pick the "Lite" version — no desktop needed, saves memory
    - Click **"Choose Storage"** → select your SD card
 
-4. **Click the gear icon** (⚙) in the bottom-right corner. This is the important part:
+4. **Click the gear icon** (⚙) in the bottom-right corner:
    - **Enable SSH**: check "Use password authentication"
-   - **Set username and password**: username = `pi`, pick a password you'll remember
-   - **Configure wireless LAN**: enter your Wi-Fi network name (SSID) and password
+   - **Set username and password**: pick a username and password you'll remember
+   - **Skip "Configure wireless LAN"** — PrintPulse handles WiFi setup for you!
    - **Set locale**: your timezone and keyboard layout
    - Click **Save**
 
 5. Click **"Write"** and wait for it to finish (~5 minutes).
 
-6. **Put the SD card in the Pi** and plug in power. The Pi will boot up and connect to your Wi-Fi automatically. Give it 2-3 minutes on the first boot.
+### Step 2: Initial Setup (one-time, requires temporary WiFi)
 
----
+For the initial setup script, you need the Pi on your network temporarily. You can either:
 
-## Step 2: Find Your Pi on the Network
+**Option A — Use Raspberry Pi Imager's WiFi setting** for this first boot only, then use PrintPulse's WiFi management going forward. Or:
 
-You need to find the Pi's IP address so you can connect to it.
+**Option B — Use the SD card WiFi file** (see [SD Card WiFi Provisioning](#sd-card-wifi-provisioning-power-user-alternative) below).
 
-### Option A: Use your router
-Log into your router's admin page (usually `192.168.1.1` or `192.168.0.1`). Look for a device named `raspberrypi` in the connected devices list.
+Once the Pi is on your network:
 
-### Option B: Use a command
-Open **Command Prompt** on your Windows PC and try:
-
-```
-ping raspberrypi.local
-```
-
-If it responds, your Pi's address is shown. If not, try:
-
-```
-arp -a
-```
-
-Look for an IP that wasn't there before (usually something like `192.168.1.XXX`).
-
-### Option C: Use an app
-Download **Fing** on your phone (free). It scans your network and shows all devices.
-
----
-
-## Step 3: Connect to the Pi via SSH
-
-SSH lets you type commands on the Pi from your Windows PC.
-
-1. Open **Command Prompt** (or PowerShell) on your Windows PC.
-
-2. Type:
-   ```
-   ssh pi@YOUR_PI_IP
-   ```
-   Replace `YOUR_PI_IP` with the IP you found in Step 2 (e.g., `ssh pi@192.168.1.42`).
-
-3. It will ask "Are you sure you want to continue connecting?" — type `yes` and press Enter.
-
-4. Enter the password you set in Step 1.
-
-You should now see a prompt like:
-```
-pi@raspberrypi:~ $
-```
-
-You're in! Everything from here is typed into this SSH window.
-
----
-
-## Step 4: Run the Setup Script
-
-This one command installs everything:
+1. **Find the Pi's IP** — check your router's admin page, or try `ping raspberrypi.local`
+2. **SSH in**: `ssh YOUR_USERNAME@YOUR_PI_IP`
+3. **Run the setup script**:
 
 ```bash
 git clone https://github.com/jampick/PrintPulse.git
@@ -109,32 +65,37 @@ bash PrintPulse/pi/setup.sh
 ```
 
 This takes about 5-10 minutes on a Pi Zero (it's a slow processor — be patient). It will:
-- Install Python and required packages
+- Install Python, NetworkManager, and avahi (mDNS)
 - Set up the PrintPulse software
+- Configure WiFi provisioning service
+- Set hostname to `printpulse` (reachable at `printpulse.local`)
 - Configure auto-start on boot
 - Start the web config UI
 
-When it's done, you'll see a message like:
-
-```
-╔═════════════════════════════════════════════════════╗
-║              SETUP COMPLETE!                       ║
-║                                                     ║
-║  Web UI:  http://192.168.1.42:5000                  ║
-╚═════════════════════════════════════════════════════╝
-```
-
-**Reboot once** to activate printer permissions:
+**Reboot** to activate everything:
 
 ```bash
 sudo reboot
 ```
 
-Wait a minute, then SSH back in if needed.
+### Step 3: Connect to PrintPulse WiFi (on subsequent boots)
 
----
+After setup, whenever the Pi can't find a known WiFi network, it automatically creates a hotspot:
 
-## Step 5: Plug in the Printer
+1. **On your phone or laptop**, look for the WiFi network **`PrintPulse-Setup`**
+2. **Connect to it** — a setup page will appear automatically (captive portal)
+3. **Select your home WiFi** from the list and enter your password
+4. **The Pi joins your network** — the setup hotspot disappears
+
+Now connect back to your home WiFi and visit:
+
+```
+http://printpulse.local:5000
+```
+
+(If `.local` doesn't work, find the Pi's IP in your router's admin page.)
+
+### Step 4: Plug in the Printer
 
 1. Plug the **USB OTG adapter** into the Pi's data USB port (the one closest to the center, NOT the power port).
 2. Plug your **thermal printer's USB cable** into the OTG adapter.
@@ -148,32 +109,53 @@ ls /dev/usb/lp0
 
 If you see `/dev/usb/lp0`, the printer is connected.
 
----
-
-## Step 6: Configure from Your Phone
+### Step 5: Configure from Your Phone
 
 1. Open a web browser on your phone or laptop.
-2. Go to `http://YOUR_PI_IP:5000` (the URL from the setup output).
-3. You'll see the PrintPulse configuration page.
+2. Go to `http://printpulse.local:5000`
+3. Log in with the credentials you set during setup.
+4. Add your RSS feeds and click **[ SAVE & RESTART ]**.
 
-### Add RSS Feeds
+---
 
-Paste one feed URL per line. Here are some good ones:
+## SD Card WiFi Provisioning (Power User Alternative)
+
+If you prefer to pre-configure WiFi without using the hotspot, create a text file called `printpulse-wifi.txt` on the SD card's boot partition:
 
 ```
-https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml
-http://feeds.bbci.co.uk/news/world/rss.xml
-https://feeds.npr.org/1001/rss.xml
+SSID=YourNetworkName
+PASSWORD=YourWiFiPassword
 ```
 
-### Adjust Settings
+**How it works:**
+- On first boot, PrintPulse checks for this file before starting AP mode
+- If found, it configures WiFi using the credentials and **deletes the file** (for security)
+- The AP hotspot is skipped entirely
 
-- **Poll interval**: How often to check for new stories (300 = every 5 minutes)
-- **Max prints per cycle**: How many stories to print each time (3 is a good default)
+**File location:**
+- **Raspberry Pi OS Bookworm** (newer): place on the `bootfs` partition (shows as `/boot/firmware/` on the Pi)
+- **Raspberry Pi OS Bullseye** (older): place on the `boot` partition (shows as `/boot/` on the Pi)
 
-### Save & Go
+**Notes:**
+- The file is deleted after use — your password is not left on the SD card
+- Leave `PASSWORD=` empty for open (unsecured) networks
+- Lines starting with `#` are treated as comments
 
-Click **[ SAVE & RESTART ]**. The watcher will restart with your new settings and start printing new headlines as they appear.
+---
+
+## Resetting WiFi
+
+If you move the appliance to a new network, or need to reconfigure WiFi:
+
+### From the Web UI
+Click the **[ RESET WIFI ]** button on the main configuration page. The Pi will drop back into AP mode (`PrintPulse-Setup` hotspot) so you can pick a new network.
+
+### From SSH
+```bash
+sudo systemctl restart printpulse-wifi
+```
+
+This re-runs the provisioning check. If the current WiFi is unavailable, the Pi will start AP mode.
 
 ---
 
@@ -182,7 +164,7 @@ Click **[ SAVE & RESTART ]**. The watcher will restart with your new settings an
 Once set up, you never need to SSH in again. Just:
 
 1. **Leave it plugged in** — it starts automatically on boot
-2. **Change settings** from your phone at `http://YOUR_PI_IP:5000`
+2. **Change settings** from your phone at `http://printpulse.local:5000`
 3. **Tear off printed stories** from the thermal printer
 
 ### What happens when...
@@ -193,10 +175,38 @@ Once set up, you never need to SSH in again. Just:
 | Wi-Fi drops temporarily | Watcher retries automatically, resumes when connected |
 | Printer runs out of paper | Replace paper roll, stories queue and print when ready |
 | You want to stop printing | Hit [ STOP ] on the web UI |
+| You move to a new WiFi network | Pi can't connect → starts AP mode → reconfigure from phone |
 
 ---
 
 ## Troubleshooting
+
+### WiFi Setup Issues
+
+**AP hotspot (`PrintPulse-Setup`) doesn't appear:**
+```bash
+# SSH in via ethernet or temporary WiFi and check:
+sudo systemctl status printpulse-wifi
+sudo journalctl -u printpulse-wifi -f
+
+# Verify NetworkManager is running:
+sudo systemctl status NetworkManager
+
+# Manually trigger AP mode:
+sudo nmcli connection up printpulse-ap
+```
+
+**Can't reach `printpulse.local`:**
+```bash
+# Check avahi is running:
+sudo systemctl status avahi-daemon
+
+# If .local doesn't work, find the IP directly:
+hostname -I
+```
+
+**Connected to AP but no captive portal:**
+- Open a browser manually and go to `http://192.168.4.1:5000/wifi`
 
 ### Check if the watcher is running
 
@@ -222,7 +232,7 @@ ls -la /dev/usb/lp0
 lsusb
 
 # Make sure you're in the lp group
-groups pi
+groups $(whoami)
 ```
 
 ### Restart everything
@@ -252,14 +262,29 @@ sudo systemctl restart printpulse printpulse-web
 ## Architecture
 
 ```
+                                     First Boot / No WiFi
+                                    ┌─────────────────────────┐
+                                    │  printpulse-wifi.service │
+                                    │  (runs before web/watch) │
+                                    │                          │
+                                    │  1. WiFi connected? ─yes─▶ Done
+                                    │  2. SD card config? ─yes─▶ Connect + Done
+                                    │  3. Start AP mode        │
+                                    │     SSID: PrintPulse-Setup│
+                                    └──────────┬──────────────┘
+                                               │
+                                    User connects to hotspot
+                                    picks home WiFi in portal
+                                               │
+                                               ▼
 Your Phone/Laptop                    Raspberry Pi Zero
 ┌──────────────┐                    ┌─────────────────────┐
 │   Browser    │───── Wi-Fi ──────▶│  Flask Web UI       │
 │  (port 5000) │                    │  (printpulse-web)   │
-└──────────────┘                    │         │           │
-                                    │    writes config    │
-                                    │         ▼           │
-                                    │  ~/.printpulse_     │
+│              │                    │         │           │
+│  printpulse  │                    │    writes config    │
+│  .local:5000 │                    │         ▼           │
+└──────────────┘                    │  ~/.printpulse_     │
                                     │  appliance.json     │
                                     │         │           │
                                     │    restarts service  │
@@ -269,3 +294,11 @@ Your Phone/Laptop                    Raspberry Pi Zero
                                     │  polls RSS feeds    │
                                     └─────────────────────┘
 ```
+
+### Systemd Services
+
+| Service | Purpose |
+|---------|---------|
+| `printpulse-wifi` | Runs once at boot: checks WiFi, tries SD card config, falls back to AP mode |
+| `printpulse-web` | Flask web UI on port 5000 (also serves the WiFi captive portal) |
+| `printpulse` | RSS feed watcher + thermal printer |

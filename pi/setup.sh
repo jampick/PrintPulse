@@ -22,13 +22,19 @@ echo "  Home: $PP_HOME"
 echo ""
 
 # ── 1. System packages ──────────────────────────────────────────
-echo "[1/7] Installing system packages..."
+echo "[1/8] Installing system packages..."
 sudo apt update -qq
-sudo apt install -y -qq python3 python3-venv python3-pip git > /dev/null 2>&1
+sudo apt install -y -qq python3 python3-venv python3-pip git network-manager avahi-daemon > /dev/null 2>&1
+# Ensure NetworkManager manages wlan0 (needed for AP mode)
+sudo systemctl enable NetworkManager 2>/dev/null || true
+sudo systemctl start NetworkManager 2>/dev/null || true
+# Enable mDNS for .local hostname resolution
+sudo systemctl enable avahi-daemon 2>/dev/null || true
+sudo systemctl start avahi-daemon 2>/dev/null || true
 echo "  OK"
 
 # ── 2. Clone repo (or update if already cloned) ─────────────────
-echo "[2/7] Setting up PrintPulse..."
+echo "[2/8] Setting up PrintPulse..."
 cd "$PP_HOME"
 
 if [ -d "PrintPulse" ]; then
@@ -42,7 +48,7 @@ else
 fi
 
 # ── 3. Create virtual environment and install ────────────────────
-echo "[3/7] Creating Python environment..."
+echo "[3/8] Creating Python environment..."
 python3 -m venv "$PP_HOME/printpulse-venv"
 source "$PP_HOME/printpulse-venv/bin/activate"
 
@@ -56,24 +62,26 @@ pip install --quiet --no-deps -e "$PP_HOME/PrintPulse"
 echo "  OK"
 
 # ── 4. USB printer permissions ───────────────────────────────────
-echo "[4/7] Setting up printer permissions..."
+echo "[4/8] Setting up printer permissions..."
 sudo usermod -a -G lp "$PP_USER" 2>/dev/null || true
 echo "  Added user '$PP_USER' to 'lp' group for USB printer access"
 
 # ── 5. Sudoers for service control (Flask needs this) ────────────
-echo "[5/7] Configuring service permissions..."
+echo "[5/8] Configuring service permissions..."
 sudo tee /etc/sudoers.d/printpulse > /dev/null << SUDOERS
 $PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart printpulse
 $PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl stop printpulse
 $PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl start printpulse
 $PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl is-active printpulse
 $PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart printpulse-web
+$PP_USER ALL=(ALL) NOPASSWD: /bin/systemctl restart printpulse-wifi
+$PP_USER ALL=(ALL) NOPASSWD: /usr/bin/nmcli
 SUDOERS
 sudo chmod 440 /etc/sudoers.d/printpulse
 echo "  OK"
 
 # ── 6. Install systemd services ─────────────────────────────────
-echo "[6/7] Installing systemd services..."
+echo "[6/8] Installing systemd services..."
 
 # Generate service files with correct user and paths
 sudo tee /etc/systemd/system/printpulse.service > /dev/null << SVCFILE
@@ -120,12 +128,42 @@ StandardError=journal
 WantedBy=multi-user.target
 WEBFILE
 
+sudo tee /etc/systemd/system/printpulse-wifi.service > /dev/null << WIFIFILE
+[Unit]
+Description=PrintPulse WiFi Provisioning
+Before=printpulse.service printpulse-web.service
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=$PP_HOME/printpulse-venv/bin/python -c "import sys; sys.path.insert(0, '$PP_HOME/PrintPulse'); from pi.wifi_provision import run_provisioning_check; run_provisioning_check()"
+Environment=HOME=$PP_HOME
+Environment=PYTHONPATH=$PP_HOME/PrintPulse
+RemainAfterExit=yes
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target
+WIFIFILE
+
 sudo systemctl daemon-reload
-sudo systemctl enable printpulse printpulse-web
+sudo systemctl enable printpulse printpulse-web printpulse-wifi
 echo "  Services enabled (will start on boot)"
 
-# ── 7. Create config and set up web UI credentials ──────────────
-echo "[7/7] Setting up configuration and credentials..."
+# ── 7. Set hostname for mDNS ───────────────────────────────────
+echo "[7/8] Setting up mDNS hostname..."
+# Set hostname to 'printpulse' so the device is reachable at printpulse.local
+if [ "$(hostname)" != "printpulse" ]; then
+    sudo hostnamectl set-hostname printpulse 2>/dev/null || true
+    echo "  Hostname set to 'printpulse' (reachable at printpulse.local)"
+else
+    echo "  Hostname already set"
+fi
+
+# ── 8. Create config and set up web UI credentials ──────────────
+echo "[8/8] Setting up configuration and credentials..."
 echo ""
 echo "  The web UI requires a username and password."
 echo "  You'll use these to log in from your phone/laptop."
