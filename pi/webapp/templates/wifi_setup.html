@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrintPulse WiFi Setup</title>
+    <style>
+        :root {
+            --primary: #33ff33;
+            --mid: #1a8a1a;
+            --dim: #1a4a1a;
+            --border: #1a4a1a;
+            --glow: #33ff33;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #0a0a0a;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1.6em;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px var(--glow);
+            text-align: center;
+        }
+
+        .subtitle {
+            color: var(--mid);
+            margin-bottom: 25px;
+            font-size: 0.85em;
+            text-align: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .panel {
+            border: 2px solid var(--border);
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #0d0d0d;
+        }
+
+        .panel-title {
+            color: var(--primary);
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .network-list {
+            list-style: none;
+        }
+
+        .network-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid var(--border);
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .network-item:hover {
+            border-color: var(--primary);
+        }
+
+        .network-item.selected {
+            border-color: var(--primary);
+            background: #0f1f0f;
+        }
+
+        .network-name {
+            flex: 1;
+            font-size: 0.95em;
+        }
+
+        .signal-bars {
+            font-size: 0.75em;
+            color: var(--mid);
+            margin-right: 10px;
+        }
+
+        .lock-icon {
+            font-size: 0.8em;
+            color: var(--mid);
+        }
+
+        label {
+            display: block;
+            color: var(--mid);
+            margin-bottom: 4px;
+            font-size: 0.85em;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            background: #111;
+            color: var(--primary);
+            border: 1px solid var(--border);
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            margin-bottom: 12px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 5px var(--border);
+        }
+
+        button {
+            width: 100%;
+            background: #111;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            padding: 12px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--primary);
+            color: #0a0a0a;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-rescan {
+            border-color: var(--mid);
+            color: var(--mid);
+            font-size: 0.85em;
+            padding: 8px;
+            margin-bottom: 15px;
+        }
+
+        .btn-rescan:hover {
+            background: var(--mid);
+            color: #0a0a0a;
+        }
+
+        .error {
+            color: #ff3333;
+            border-color: #ff3333;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+            border: 1px solid #ff3333;
+        }
+
+        .success {
+            color: var(--primary);
+            border-color: var(--primary);
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+            border: 1px solid var(--primary);
+        }
+
+        .help {
+            color: var(--dim);
+            font-size: 0.75em;
+            margin-top: 8px;
+        }
+
+        .spinner {
+            display: none;
+            text-align: center;
+            color: var(--mid);
+            padding: 20px;
+            font-size: 0.9em;
+        }
+
+        .footer {
+            text-align: center;
+            color: var(--border);
+            font-size: 0.75em;
+            margin-top: 30px;
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 12px; }
+            h1 { font-size: 1.3em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>[ PRINTPULSE ]</h1>
+        <div class="subtitle">WiFi Setup</div>
+
+        {% if error %}
+        <div class="error">&gt; {{ error }}</div>
+        {% endif %}
+
+        {% if success %}
+        <div class="success">&gt; {{ success }}</div>
+        {% else %}
+
+        <form action="/wifi/connect" method="post" id="wifi-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="panel">
+                <div class="panel-title">// SELECT NETWORK</div>
+
+                <a href="/wifi" style="text-decoration:none;">
+                    <button type="button" class="btn-rescan">[ RESCAN ]</button>
+                </a>
+
+                {% if networks %}
+                <ul class="network-list">
+                    {% for net in networks %}
+                    <li class="network-item" onclick="selectNetwork(this, '{{ net.ssid|e }}')">
+                        <span class="network-name">{{ net.ssid }}</span>
+                        <span class="signal-bars">{{ net.signal }}%</span>
+                        {% if net.security != 'Open' %}
+                        <span class="lock-icon">[SECURED]</span>
+                        {% else %}
+                        <span class="lock-icon">[OPEN]</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div style="color: var(--mid); padding: 10px;">No networks found. Try rescanning.</div>
+                {% endif %}
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">// CONNECT</div>
+
+                <label for="ssid">Network name:</label>
+                <input type="text" name="ssid" id="ssid" placeholder="Select above or type manually"
+                       value="{{ request.form.get('ssid', '') }}">
+
+                <label for="password">Password:</label>
+                <input type="password" name="password" id="password" placeholder="Leave empty for open networks">
+
+                <button type="submit" id="connect-btn">[ CONNECT ]</button>
+                <div class="help">The Pi will restart its network. This page will stop responding
+                    — connect to your home WiFi and visit printpulse.local:5000</div>
+            </div>
+        </form>
+
+        <div class="spinner" id="spinner">
+            Connecting... please wait.<br>
+            The Pi is joining your WiFi network.<br><br>
+            Connect your device back to your home WiFi,<br>
+            then visit <strong>http://printpulse.local:5000</strong>
+        </div>
+        {% endif %}
+
+        <div class="footer">PrintPulse WiFi Setup</div>
+    </div>
+
+    <script>
+        function selectNetwork(el, ssid) {
+            document.querySelectorAll('.network-item').forEach(function(item) {
+                item.classList.remove('selected');
+            });
+            el.classList.add('selected');
+            document.getElementById('ssid').value = ssid;
+        }
+
+        var form = document.getElementById('wifi-form');
+        if (form) {
+            form.addEventListener('submit', function() {
+                document.getElementById('connect-btn').disabled = true;
+                document.getElementById('connect-btn').textContent = '[ CONNECTING... ]';
+                document.getElementById('spinner').style.display = 'block';
+            });
+        }
+    </script>
+</body>
+</html>
