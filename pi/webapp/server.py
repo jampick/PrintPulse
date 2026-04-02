@@ -466,6 +466,11 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
             if hh > 23 or mm > 59:
                 errors.append(f"{label} is not a valid time.")
 
+    quiet_wake_mode = form.get("quiet_wake_mode", "latest")
+    if quiet_wake_mode not in ("latest", "all"):
+        errors.append("Quiet wake mode must be 'latest' or 'all'.")
+        quiet_wake_mode = "latest"
+
     # --- Auto-update ---
     auto_update_enabled = form.get("auto_update_enabled") == "1"
     _valid_intervals = {1, 6, 12, 24}
@@ -504,6 +509,7 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         "quiet_enabled": quiet_enabled,
         "quiet_start": quiet_start,
         "quiet_end": quiet_end,
+        "quiet_wake_mode": quiet_wake_mode,
         "auto_update_enabled": auto_update_enabled,
         "auto_update_interval": auto_update_interval,
     }, []
@@ -616,6 +622,7 @@ def save():
     config["quiet_enabled"] = validated["quiet_enabled"]
     config["quiet_start"] = validated["quiet_start"]
     config["quiet_end"] = validated["quiet_end"]
+    config["quiet_wake_mode"] = validated["quiet_wake_mode"]
     config["auto_update_enabled"] = validated["auto_update_enabled"]
     config["auto_update_interval"] = validated["auto_update_interval"]
     save_config(config)

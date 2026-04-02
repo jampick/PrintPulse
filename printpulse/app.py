@@ -140,6 +140,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Quiet hours end time (e.g. 08:00). Resume printing at this time.",
     )
+    parser.add_argument(
+        "--quiet-wake-mode",
+        choices=["latest", "all"],
+        default="latest",
+        help="What to print when quiet hours end: 'latest' prints only the most "
+             "recent item per source (default), 'all' prints every queued item.",
+    )
     # ── Letter mode ──
     parser.add_argument(
         "--letter",
@@ -498,6 +505,7 @@ def run(argv: list[str]):
             theme=theme,
             quiet_start=args.quiet_start,
             quiet_end=args.quiet_end,
+            quiet_wake_mode=args.quiet_wake_mode,
         )
         return
 

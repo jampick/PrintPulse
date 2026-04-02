@@ -302,7 +302,14 @@
                                value="{{ config.quiet_end }}">
                     </div>
                 </div>
-                <div class="help">Printer stays silent between these hours. Articles queue and print when quiet hours end. Timezone: {{ timezone }}</div>
+                <div style="margin-top: 0.5rem;">
+                    <label for="quiet_wake_mode">When quiet hours end:</label>
+                    <select name="quiet_wake_mode" id="quiet_wake_mode">
+                        <option value="latest" {% if config.quiet_wake_mode == 'latest' %}selected{% endif %}>Print only the latest item per source</option>
+                        <option value="all" {% if config.quiet_wake_mode == 'all' %}selected{% endif %}>Print all queued items</option>
+                    </select>
+                </div>
+                <div class="help">Printer stays silent between these hours. Timezone: {{ timezone }}</div>
             </div>
         </div>
 
