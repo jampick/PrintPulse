@@ -122,14 +122,21 @@ def _load_update_log() -> list[dict]:
     return []
 
 
-def _append_update_log(result: str, changed: bool):
-    """Append one entry to the update log and trim to max size."""
+def _append_update_log(result: str, changed: bool, *,
+                       status: str = "", description: str = ""):
+    """Append one entry to the update log and trim to max size.
+
+    status: "up_to_date", "updated", or "error"
+    description: brief summary of what changed (commit subjects) or error detail
+    """
     from datetime import datetime
     log = _load_update_log()
     log.append({
         "timestamp": datetime.now().strftime("%Y-%m-%d %I:%M:%S %p"),
         "result": result,
         "changed": changed,
+        "status": status or ("updated" if changed else "up_to_date"),
+        "description": description,
     })
     if len(log) > _UPDATE_LOG_MAX:
         log = log[-_UPDATE_LOG_MAX:]
@@ -140,11 +147,13 @@ def _append_update_log(result: str, changed: bool):
         logger.warning("Could not write update log: %s", exc)
 
 
-def _run_auto_update() -> tuple[str, bool]:
+def _run_auto_update() -> tuple[str, bool, str, str]:
     """Run git pull and, if new commits landed, restart services.
 
-    Returns (result_message, changed) where changed is True if
-    git pull fetched new commits.
+    Returns (result_message, changed, status, description) where:
+    - changed is True if git pull fetched new commits
+    - status is "up_to_date", "updated", or "error"
+    - description is a brief summary of what changed or error detail
     """
     global _APP_VERSION
 
@@ -160,12 +169,30 @@ def _run_auto_update() -> tuple[str, bool]:
     except (OSError, subprocess.TimeoutExpired) as exc:
         msg = f"git pull failed: {type(exc).__name__}"
         logger.error("Auto-update %s", msg)
-        return msg, False
+        return msg, False, "error", str(exc)
 
     changed = "already up to date" not in pull_output.lower()
 
     if not changed:
-        return "Already up to date.", False
+        return "Already up to date.", False, "up_to_date", ""
+
+    # Capture commit summaries for the description
+    description = ""
+    try:
+        log_result = subprocess.run(
+            ["git", "-C", _project_root, "log", "--oneline", "-5", "HEAD"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if log_result.returncode == 0 and log_result.stdout.strip():
+            # Take just the subject lines (drop the hash prefix)
+            subjects = []
+            for line in log_result.stdout.strip().splitlines()[:5]:
+                parts = line.split(" ", 1)
+                if len(parts) == 2:
+                    subjects.append(parts[1])
+            description = "; ".join(subjects) if subjects else pull_output
+    except Exception:
+        description = pull_output
 
     # New commits — restart services
     msgs = [f"git pull: {pull_output}"]
@@ -189,7 +216,7 @@ def _run_auto_update() -> tuple[str, bool]:
         msgs.append(f"printpulse-web: restart failed ({type(exc).__name__})")
         logger.error("Auto-update failed to restart printpulse-web: %s", exc)
 
-    return " | ".join(msgs), True
+    return " | ".join(msgs), True, "updated", description
 
 
 def _auto_update_worker():
@@ -213,12 +240,13 @@ def _auto_update_worker():
             check_ts = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
             logger.info("Auto-update: running scheduled check")
 
-            result_msg, changed = _run_auto_update()
+            result_msg, changed, status, description = _run_auto_update()
 
             _auto_update_state["last_check"] = check_ts
             _auto_update_state["last_result"] = result_msg
             _auto_update_state["last_changed"] = changed
-            _append_update_log(result_msg, changed)
+            _append_update_log(result_msg, changed,
+                               status=status, description=description)
         except Exception as exc:
             logger.error("Auto-update worker error: %s", exc)
 
