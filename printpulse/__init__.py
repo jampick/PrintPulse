@@ -1,4 +1,4 @@
-__version__ = "0.1.9"
+__version__ = "0.1.10"
 
 
 def require_dependency(package: str, import_name: str | None = None):
