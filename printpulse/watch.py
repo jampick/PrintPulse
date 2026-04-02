@@ -219,10 +219,23 @@ def _is_in_quiet_hours(quiet_start: str, quiet_end: str) -> bool:
         return now >= start or now < end
 
 
+def _filter_quiet_queue_latest(queue: list[dict]) -> list[dict]:
+    """Keep only the most recent item per source from the quiet queue.
+
+    Items later in the list are considered more recent (appended in arrival order).
+    """
+    latest_by_source: dict[str, dict] = {}
+    for item in queue:
+        source = item.get("_source", "")
+        latest_by_source[source] = item  # last one wins
+    return list(latest_by_source.values())
+
+
 def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                    plot_callback, theme: str = "green",
                    quiet_start: str | None = None,
-                   quiet_end: str | None = None):
+                   quiet_end: str | None = None,
+                   quiet_wake_mode: str = "latest"):
     """Main watch loop. Polls feeds and calls plot_callback(text) for each new item."""
     from rich.live import Live
     from rich.text import Text as RText
@@ -286,12 +299,16 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                 quiet_queue = _load_quiet_queue()
                 if quiet_queue and not (use_quiet and _is_in_quiet_hours(quiet_start, quiet_end)):
                     live.stop()
-                    ui.retro_panel(
-                        "QUIET QUEUE",
-                        f"Quiet hours ended — printing {len(quiet_queue)} saved item(s).",
-                        theme,
-                    )
                     _save_quiet_queue([])  # Clear before printing so a crash doesn't re-print
+                    if quiet_wake_mode == "latest":
+                        total_queued = len(quiet_queue)
+                        quiet_queue = _filter_quiet_queue_latest(quiet_queue)
+                        skipped = total_queued - len(quiet_queue)
+                        msg = (f"Quiet hours ended — printing {len(quiet_queue)} latest item(s)"
+                               f" ({skipped} older item(s) discarded).")
+                    else:
+                        msg = f"Quiet hours ended — printing {len(quiet_queue)} saved item(s)."
+                    ui.retro_panel("QUIET QUEUE", msg, theme)
                     for i, q_item in enumerate(quiet_queue, 1):
                         title = q_item["title"]
                         source = q_item.get("_source", "")

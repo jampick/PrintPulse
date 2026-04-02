@@ -10,6 +10,7 @@ import pytest
 from printpulse.watch import (
     QUIET_QUEUE_FILE,
     _enqueue_quiet_items,
+    _filter_quiet_queue_latest,
     _is_in_quiet_hours,
     _load_quiet_queue,
     _save_quiet_queue,
@@ -149,3 +150,48 @@ class TestQuietQueue:
             f.write("not valid json{{{")
         monkeypatch.setattr("printpulse.watch.QUIET_QUEUE_FILE", bad_file)
         assert _load_quiet_queue() == []
+
+
+class TestFilterQuietQueueLatest:
+    """Test _filter_quiet_queue_latest keeps only the most recent item per source."""
+
+    def test_single_source_keeps_last(self):
+        queue = [
+            {"id": "1", "title": "Old", "summary": "", "_source": "Feed A"},
+            {"id": "2", "title": "Middle", "summary": "", "_source": "Feed A"},
+            {"id": "3", "title": "Latest", "summary": "", "_source": "Feed A"},
+        ]
+        result = _filter_quiet_queue_latest(queue)
+        assert len(result) == 1
+        assert result[0]["id"] == "3"
+        assert result[0]["title"] == "Latest"
+
+    def test_multiple_sources_keeps_latest_each(self):
+        queue = [
+            {"id": "a1", "title": "A old", "summary": "", "_source": "Feed A"},
+            {"id": "b1", "title": "B old", "summary": "", "_source": "Feed B"},
+            {"id": "a2", "title": "A new", "summary": "", "_source": "Feed A"},
+            {"id": "b2", "title": "B new", "summary": "", "_source": "Feed B"},
+        ]
+        result = _filter_quiet_queue_latest(queue)
+        assert len(result) == 2
+        titles = {r["title"] for r in result}
+        assert titles == {"A new", "B new"}
+
+    def test_empty_queue(self):
+        assert _filter_quiet_queue_latest([]) == []
+
+    def test_single_item(self):
+        queue = [{"id": "x", "title": "Only", "summary": "", "_source": "Src"}]
+        result = _filter_quiet_queue_latest(queue)
+        assert len(result) == 1
+        assert result[0]["id"] == "x"
+
+    def test_empty_source_treated_as_one_group(self):
+        queue = [
+            {"id": "1", "title": "First", "summary": "", "_source": ""},
+            {"id": "2", "title": "Second", "summary": "", "_source": ""},
+        ]
+        result = _filter_quiet_queue_latest(queue)
+        assert len(result) == 1
+        assert result[0]["id"] == "2"
