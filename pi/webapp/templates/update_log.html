@@ -82,8 +82,10 @@
             word-break: break-word;
         }
 
-        .changed-yes { color: var(--primary); }
-        .changed-no  { color: var(--mid); }
+        .status-updated    { color: var(--primary); font-weight: bold; }
+        .status-up-to-date { color: var(--mid); }
+        .status-error      { color: #ff4444; }
+        .description       { color: var(--mid); font-size: 0.8em; }
 
         .empty {
             color: var(--help);
@@ -117,18 +119,20 @@
             <thead>
                 <tr>
                     <th>Timestamp</th>
-                    <th>Updated?</th>
-                    <th>Result</th>
+                    <th>Status</th>
+                    <th>Description</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
                 <tr>
                     <td style="white-space:nowrap; color:var(--mid);">{{ item.timestamp }}</td>
-                    <td class="{% if item.changed %}changed-yes{% else %}changed-no{% endif %}">
-                        {% if item.changed %}YES{% else %}no{% endif %}
+                    <td class="{% if item.get('status', '') == 'updated' %}status-updated{% elif item.get('status', '') == 'error' %}status-error{% else %}status-up-to-date{% endif %}">
+                        {% if item.get('status', '') == 'updated' %}Updated
+                        {% elif item.get('status', '') == 'error' %}Error
+                        {% else %}Up to date{% endif %}
                     </td>
-                    <td>{{ item.result }}</td>
+                    <td>{% if item.get('description') %}{{ item.description }}{% elif item.get('status', '') == 'error' %}{{ item.result }}{% else %}&mdash;{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

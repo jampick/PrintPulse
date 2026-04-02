@@ -180,17 +180,29 @@ class TestAutoUpdateRoutes:
         assert resp.status_code == 200
         assert b"UPDATE" in resp.data
 
+    def test_update_log_backward_compat_old_entries(self):
+        """Old log entries without status/description should render gracefully."""
+        client = _make_client()
+        old_entry = {"timestamp": "2026-03-20 09:00:00 AM", "result": "Already up to date.", "changed": False}
+        with patch("pi.webapp.server._load_update_log", return_value=[old_entry]):
+            resp = client.get("/update_log")
+        assert resp.status_code == 200
+        assert b"Up to date" in resp.data
+
     def test_update_log_shows_entries(self):
         client = _make_client()
         fake_log = [
-            {"timestamp": "2026-03-23 10:00:00 AM", "result": "Already up to date.", "changed": False},
-            {"timestamp": "2026-03-23 11:00:00 AM", "result": "git pull: 1 file changed", "changed": True},
+            {"timestamp": "2026-03-23 10:00:00 AM", "result": "Already up to date.",
+             "changed": False, "status": "up_to_date", "description": ""},
+            {"timestamp": "2026-03-23 11:00:00 AM", "result": "git pull: 1 file changed",
+             "changed": True, "status": "updated", "description": "feat: add new feature"},
         ]
         with patch("pi.webapp.server._load_update_log", return_value=fake_log):
             resp = client.get("/update_log")
         assert resp.status_code == 200
-        assert b"Already up to date" in resp.data
-        assert b"1 file changed" in resp.data
+        assert b"Up to date" in resp.data
+        assert b"Updated" in resp.data
+        assert b"feat: add new feature" in resp.data
 
 
 class TestRunAutoUpdate:
@@ -200,8 +212,9 @@ class TestRunAutoUpdate:
         from pi.webapp.server import _run_auto_update
         mock_result = type("R", (), {"returncode": 0, "stdout": "Already up to date.\n", "stderr": ""})()
         with patch("subprocess.run", return_value=mock_result):
-            msg, changed = _run_auto_update()
+            msg, changed, status, description = _run_auto_update()
         assert changed is False
+        assert status == "up_to_date"
         assert "up to date" in msg.lower()
 
     def test_new_commits_triggers_restart(self):
@@ -212,7 +225,12 @@ class TestRunAutoUpdate:
             "stderr": "",
         })()
         restart_result = type("R", (), {"returncode": 0})()
-        call_results = [pull_result, restart_result]
+        log_result = type("R", (), {
+            "returncode": 0,
+            "stdout": "abc1234 feat: add cool feature\ndef5678 fix: repair widget",
+            "stderr": "",
+        })()
+        call_results = [pull_result, log_result, restart_result]
         popen_calls = []
 
         def fake_run(cmd, **kwargs):
@@ -223,14 +241,17 @@ class TestRunAutoUpdate:
 
         with patch("subprocess.run", side_effect=fake_run), \
              patch("subprocess.Popen", side_effect=fake_popen):
-            msg, changed = _run_auto_update()
+            msg, changed, status, description = _run_auto_update()
 
         assert changed is True
+        assert status == "updated"
+        assert "feat: add cool feature" in description
         assert len(popen_calls) == 1  # printpulse-web restart via Popen
 
     def test_git_pull_failure(self):
         from pi.webapp.server import _run_auto_update
         with patch("subprocess.run", side_effect=OSError("not found")):
-            msg, changed = _run_auto_update()
+            msg, changed, status, description = _run_auto_update()
         assert changed is False
+        assert status == "error"
         assert "failed" in msg.lower()
