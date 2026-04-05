@@ -142,10 +142,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--quiet-wake-mode",
-        choices=["latest", "all"],
+        choices=["latest", "all", "next"],
         default="latest",
         help="What to print when quiet hours end: 'latest' prints only the most "
-             "recent item per source (default), 'all' prints every queued item.",
+             "recent item per source (default), 'all' prints every queued item, "
+             "'next' prints only the oldest queued item.",
     )
     # ── Letter mode ──
     parser.add_argument(

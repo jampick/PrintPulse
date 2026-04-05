@@ -311,6 +311,7 @@
                     <label for="quiet_wake_mode">When quiet hours end:</label>
                     <select name="quiet_wake_mode" id="quiet_wake_mode">
                         <option value="latest" {% if config.quiet_wake_mode == 'latest' %}selected{% endif %}>Print only the latest item per source</option>
+                        <option value="next" {% if config.quiet_wake_mode == 'next' %}selected{% endif %}>Print next item only (oldest queued)</option>
                         <option value="all" {% if config.quiet_wake_mode == 'all' %}selected{% endif %}>Print all queued items</option>
                     </select>
                 </div>

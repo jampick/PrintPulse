@@ -552,8 +552,8 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
                 errors.append(f"{label} is not a valid time.")
 
     quiet_wake_mode = form.get("quiet_wake_mode", "latest")
-    if quiet_wake_mode not in ("latest", "all"):
-        errors.append("Quiet wake mode must be 'latest' or 'all'.")
+    if quiet_wake_mode not in ("latest", "all", "next"):
+        errors.append("Quiet wake mode must be 'latest', 'all', or 'next'.")
         quiet_wake_mode = "latest"
 
     # --- Auto-update ---
