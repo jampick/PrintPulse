@@ -114,7 +114,7 @@ class TestAutoUpdateValidation:
             "max_prints": "3",
             "theme": "green",
             "printer_device": "/dev/usb/lp0",
-            "quiet_enabled": "",
+            "print_mode": "scheduled",
             "quiet_start": "22:00",
             "quiet_end": "08:00",
             "auto_update_enabled": "",

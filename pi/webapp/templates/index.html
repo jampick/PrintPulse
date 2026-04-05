@@ -52,43 +52,6 @@
             font-size: 0.85em;
         }
 
-        .print-toggle {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .print-toggle button {
-            font-size: 1.2em;
-            padding: 14px 40px;
-            letter-spacing: 2px;
-            font-weight: bold;
-            border-width: 3px;
-            transition: all 0.15s ease;
-        }
-
-        .print-toggle .toggle-on {
-            border-color: #33ff33;
-            color: #33ff33;
-            text-shadow: 0 0 8px #33ff33;
-        }
-        .print-toggle .toggle-on:hover {
-            background: #33ff33;
-            color: #0a0a0a;
-            text-shadow: none;
-        }
-
-        .print-toggle .toggle-off {
-            border-color: #ff3333;
-            color: #ff3333;
-            text-shadow: 0 0 8px #ff3333;
-        }
-        .print-toggle .toggle-off:hover {
-            background: #ff3333;
-            color: #0a0a0a;
-            text-shadow: none;
-        }
-
         .status-bar {
             display: flex;
             justify-content: center;
@@ -247,18 +210,6 @@
     </div>
     <div class="subtitle">Appliance Configuration</div>
 
-    <!-- Print On/Off Toggle -->
-    <div class="print-toggle">
-        <form action="/toggle_enabled" method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            {% if config.enabled %}
-            <button type="submit" class="toggle-on" id="print-toggle-btn">[ PRINTING: ON ]</button>
-            {% else %}
-            <button type="submit" class="toggle-off" id="print-toggle-btn">[ PRINTING: OFF ]</button>
-            {% endif %}
-        </form>
-    </div>
-
     <!-- Status Bar -->
     <div class="status-bar">
         <div class="status-item">
@@ -273,10 +224,10 @@
                   id="prt-dot"></span>
             <span>Printer: <strong id="prt-text">{% if printer_ok %}connected{% else %}not found{% endif %}</strong></span>
         </div>
-        <div class="status-item" id="quiet-status" style="{% if not quiet_hours.enabled %}display:none;{% endif %}">
-            <span class="dot {% if quiet_hours.active %}dot-yellow{% else %}dot-green{% endif %}"
-                  id="quiet-dot"></span>
-            <span>Quiet: <strong id="quiet-text">{% if quiet_hours.active %}active ({{ quiet_hours.start }}&ndash;{{ quiet_hours.end }}){% else %}off{% endif %}</strong></span>
+        <div class="status-item" id="print-mode-status">
+            <span class="dot {% if config.print_mode == 'off' %}dot-red{% elif config.print_mode == 'scheduled' and quiet_hours.active %}dot-yellow{% else %}dot-green{% endif %}"
+                  id="mode-dot"></span>
+            <span>Print: <strong id="mode-text">{% if config.print_mode == 'off' %}off{% elif config.print_mode == 'on' %}on{% elif quiet_hours.active %}quiet ({{ quiet_hours.start }}&ndash;{{ quiet_hours.end }}){% else %}scheduled{% endif %}</strong></span>
         </div>
     </div>
 
@@ -331,14 +282,19 @@
         </div>
 
         <div class="panel">
-            <div class="panel-title">// QUIET HOURS</div>
-            <div class="checkbox-row">
-                <input type="checkbox" name="quiet_enabled" id="quiet_enabled"
-                       value="1" {% if config.quiet_enabled %}checked{% endif %}
-                       onchange="document.getElementById('quiet-times').style.opacity = this.checked ? '1' : '0.4'">
-                <label for="quiet_enabled">Enable quiet hours</label>
+            <div class="panel-title">// PRINTING</div>
+            <label for="print_mode">Print mode:</label>
+            <select name="print_mode" id="print_mode" onchange="updatePrintMode()">
+                <option value="on" {% if config.print_mode == 'on' %}selected{% endif %}>Always on</option>
+                <option value="scheduled" {% if config.print_mode == 'scheduled' %}selected{% endif %}>Scheduled (quiet hours)</option>
+                <option value="off" {% if config.print_mode == 'off' %}selected{% endif %}>Off</option>
+            </select>
+            <div class="help" id="print-mode-help" style="margin-top:-10px;">
+                {% if config.print_mode == 'on' %}Prints whenever new items arrive.
+                {% elif config.print_mode == 'off' %}Printing is paused. Items are still tracked.
+                {% else %}Prints outside quiet hours. Items during quiet hours are queued.{% endif %}
             </div>
-            <div id="quiet-times" style="opacity: {% if config.quiet_enabled %}1{% else %}0.4{% endif %}">
+            <div id="quiet-times" style="{% if config.print_mode != 'scheduled' %}opacity:0.4; pointer-events:none;{% endif %}">
                 <div class="row">
                     <div>
                         <label for="quiet_start">Start (no printing after):</label>
@@ -423,6 +379,25 @@
 
     <!-- Live status polling -->
     <script>
+        function updatePrintMode() {
+            var mode = document.getElementById('print_mode').value;
+            var qt = document.getElementById('quiet-times');
+            var help = document.getElementById('print-mode-help');
+            if (mode === 'scheduled') {
+                qt.style.opacity = '1';
+                qt.style.pointerEvents = '';
+                help.textContent = 'Prints outside quiet hours. Items during quiet hours are queued.';
+            } else {
+                qt.style.opacity = '0.4';
+                qt.style.pointerEvents = 'none';
+                if (mode === 'on') {
+                    help.textContent = 'Prints whenever new items arrive.';
+                } else {
+                    help.textContent = 'Printing is paused. Items are still tracked.';
+                }
+            }
+        }
+
         function doTestPrint() {
             var btn = document.getElementById('test-print-btn');
             var result = document.getElementById('test-print-result');
@@ -510,31 +485,26 @@
                         }
                     }
 
-                    // Print enabled/disabled toggle
-                    var toggleBtn = document.getElementById('print-toggle-btn');
-                    if (toggleBtn && data.enabled !== undefined) {
-                        if (data.enabled) {
-                            toggleBtn.textContent = '[ PRINTING: ON ]';
-                            toggleBtn.className = 'toggle-on';
+                    // Print mode + quiet hours status
+                    var modeDot = document.getElementById('mode-dot');
+                    var modeText = document.getElementById('mode-text');
+                    if (modeDot && modeText && data.print_mode) {
+                        var pm = data.print_mode;
+                        var qh = data.quiet_hours || {};
+                        if (pm === 'off') {
+                            modeDot.className = 'dot dot-red';
+                            modeText.textContent = 'off';
+                        } else if (pm === 'on') {
+                            modeDot.className = 'dot dot-green';
+                            modeText.textContent = 'on';
                         } else {
-                            toggleBtn.textContent = '[ PRINTING: OFF ]';
-                            toggleBtn.className = 'toggle-off';
-                        }
-                    }
-
-                    // Quiet hours status
-                    if (data.quiet_hours) {
-                        var qh = data.quiet_hours;
-                        var qStatus = document.getElementById('quiet-status');
-                        var qDot = document.getElementById('quiet-dot');
-                        var qText = document.getElementById('quiet-text');
-                        if (qStatus) {
-                            qStatus.style.display = qh.enabled ? '' : 'none';
-                            if (qh.enabled) {
-                                qDot.className = 'dot ' + (qh.active ? 'dot-yellow' : 'dot-green');
-                                qText.textContent = qh.active
-                                    ? 'active (' + qh.start + '\u2013' + qh.end + ')'
-                                    : 'off';
+                            // scheduled
+                            if (qh.active) {
+                                modeDot.className = 'dot dot-yellow';
+                                modeText.textContent = 'quiet (' + qh.start + '\u2013' + qh.end + ')';
+                            } else {
+                                modeDot.className = 'dot dot-green';
+                                modeText.textContent = 'scheduled';
                             }
                         }
                     }

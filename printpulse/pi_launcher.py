@@ -20,8 +20,9 @@ def main():
 
     config = load_config()
 
-    if not config.get("enabled", True):
-        print("PrintPulse appliance is disabled in config. Exiting.")
+    print_mode = config.get("print_mode", "scheduled")
+    if print_mode == "off":
+        print("PrintPulse appliance is disabled (print_mode=off). Exiting.")
         sys.exit(0)
 
     feeds = config.get("feeds", [])
@@ -52,8 +53,8 @@ def main():
     theme = config.get("theme", "green")
     argv.extend(["--theme", theme])
 
-    # Quiet hours
-    if config.get("quiet_enabled", True):
+    # Quiet hours (only in scheduled mode)
+    if print_mode == "scheduled":
         quiet_start = config.get("quiet_start", "22:00")
         quiet_end = config.get("quiet_end", "08:00")
         argv.extend(["--quiet-start", quiet_start, "--quiet-end", quiet_end])
