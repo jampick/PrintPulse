@@ -534,8 +534,11 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         errors.append(f"Invalid theme. Must be one of: {', '.join(sorted(_VALID_THEMES))}.")
         theme = "green"
 
-    # --- Quiet hours ---
-    quiet_enabled = form.get("quiet_enabled") == "1"
+    # --- Print mode (unified on/scheduled/off) ---
+    print_mode = form.get("print_mode", "scheduled")
+    if print_mode not in ("on", "scheduled", "off"):
+        errors.append("Print mode must be 'on', 'scheduled', or 'off'.")
+        print_mode = "scheduled"
 
     quiet_start = form.get("quiet_start", "22:00").strip()
     quiet_end = form.get("quiet_end", "08:00").strip()
@@ -588,7 +591,7 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         "max_prints": max_prints,
         "theme": theme,
         "printer_device": printer_device,
-        "quiet_enabled": quiet_enabled,
+        "print_mode": print_mode,
         "quiet_start": quiet_start,
         "quiet_end": quiet_end,
         "quiet_wake_mode": quiet_wake_mode,
@@ -627,11 +630,11 @@ def _quiet_hours_active() -> dict:
     from datetime import datetime, time as dtime
 
     config = load_config()
-    enabled = config.get("quiet_enabled", False)
+    print_mode = config.get("print_mode", "scheduled")
     start_str = config.get("quiet_start", "22:00")
     end_str = config.get("quiet_end", "08:00")
 
-    if not enabled:
+    if print_mode != "scheduled":
         return {"enabled": False, "active": False, "start": start_str, "end": end_str}
 
     now = datetime.now().time()
@@ -701,7 +704,7 @@ def save():
     config["max_prints"] = validated["max_prints"]
     config["theme"] = validated["theme"]
     config["printer_device"] = validated["printer_device"]
-    config["quiet_enabled"] = validated["quiet_enabled"]
+    config["print_mode"] = validated["print_mode"]
     config["quiet_start"] = validated["quiet_start"]
     config["quiet_end"] = validated["quiet_end"]
     config["quiet_wake_mode"] = validated["quiet_wake_mode"]
@@ -876,22 +879,24 @@ def status_api():
         "printer": _printer_detected(),
         "auto_update": _auto_update_state.copy(),
         "quiet_hours": _quiet_hours_active(),
-        "enabled": cfg.get("enabled", True),
+        "print_mode": cfg.get("print_mode", "scheduled"),
     })
 
 
 @app.route("/toggle_enabled", methods=["POST"])
 @require_auth
 def toggle_enabled():
-    """Toggle the print enabled/disabled state."""
+    """Cycle print mode: on -> scheduled -> off -> on."""
     client_ip = request.remote_addr or "unknown"
     if _check_rate_limit(f"toggle:{client_ip}"):
         abort(429)
 
     config = load_config()
-    config["enabled"] = not config.get("enabled", True)
+    cycle = {"on": "scheduled", "scheduled": "off", "off": "on"}
+    current = config.get("print_mode", "scheduled")
+    config["print_mode"] = cycle.get(current, "on")
     save_config(config)
-    logger.info("Printing %s via toggle button.", "enabled" if config["enabled"] else "disabled")
+    logger.info("Print mode changed to '%s' via toggle.", config["print_mode"])
     return redirect(url_for("index"))
 
 

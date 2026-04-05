@@ -27,11 +27,10 @@ def default_config() -> dict:
         "max_prints": 3,
         "theme": "green",
         "printer_device": "/dev/usb/lp0",
-        "quiet_enabled": True,
+        "print_mode": "scheduled",  # "on", "scheduled", or "off"
         "quiet_start": "22:00",
         "quiet_end": "08:00",
         "quiet_wake_mode": "latest",
-        "enabled": True,
         "auth_user": "",
         "auth_hash": "",
         "secret_key": "",
@@ -50,6 +49,17 @@ def load_config() -> dict:
             saved = json.load(f)
         # Merge saved values over defaults so new keys get defaults
         merged = {**defaults, **saved}
+        # Migrate legacy enabled/quiet_enabled to print_mode
+        if "print_mode" not in saved:
+            if not saved.get("enabled", True):
+                merged["print_mode"] = "off"
+            elif saved.get("quiet_enabled", True):
+                merged["print_mode"] = "scheduled"
+            else:
+                merged["print_mode"] = "on"
+        # Clean up legacy keys
+        merged.pop("enabled", None)
+        merged.pop("quiet_enabled", None)
         return merged
     except Exception:
         return defaults

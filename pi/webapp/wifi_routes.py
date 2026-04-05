@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 
-from flask import Blueprint, render_template, request, redirect, jsonify, abort
+from flask import Blueprint, render_template, request, jsonify, abort
 
 logger = logging.getLogger("printpulse.wifi_routes")
 

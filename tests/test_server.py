@@ -114,7 +114,7 @@ class TestAutoUpdateValidation:
             "max_prints": "3",
             "theme": "green",
             "printer_device": "/dev/usb/lp0",
-            "quiet_enabled": "",
+            "print_mode": "scheduled",
             "quiet_start": "22:00",
             "quiet_end": "08:00",
             "auto_update_enabled": "",
@@ -187,7 +187,7 @@ class TestAutoUpdateRoutes:
         with patch("pi.webapp.server._load_update_log", return_value=[old_entry]):
             resp = client.get("/update_log")
         assert resp.status_code == 200
-        assert b"Up to date" in resp.data
+        assert b"No changes" in resp.data
 
     def test_update_log_shows_entries(self):
         client = _make_client()
@@ -200,7 +200,7 @@ class TestAutoUpdateRoutes:
         with patch("pi.webapp.server._load_update_log", return_value=fake_log):
             resp = client.get("/update_log")
         assert resp.status_code == 200
-        assert b"Up to date" in resp.data
+        assert b"No changes" in resp.data
         assert b"Updated" in resp.data
         assert b"feat: add new feature" in resp.data
 

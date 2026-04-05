@@ -24,7 +24,7 @@ class TestDefaultConfig:
         assert "max_prints" in cfg
         assert "theme" in cfg
         assert "printer_device" in cfg
-        assert "enabled" in cfg
+        assert "print_mode" in cfg
 
     def test_has_auth_fields(self):
         cfg = default_config()
@@ -42,6 +42,52 @@ class TestDefaultConfig:
         cfg = default_config()
         for feed in cfg["feeds"]:
             assert feed.startswith("https://")
+
+    def test_print_mode_default(self):
+        cfg = default_config()
+        assert cfg["print_mode"] == "scheduled"
+
+
+class TestConfigMigration:
+    """Test migration from legacy enabled/quiet_enabled to print_mode."""
+
+    def test_legacy_disabled_migrates_to_off(self, tmp_path, monkeypatch):
+        import json
+        from pi import appliance
+        cfg_path = tmp_path / "config.json"
+        cfg_path.write_text(json.dumps({"enabled": False, "quiet_enabled": True}))
+        monkeypatch.setattr(appliance, "CONFIG_PATH", str(cfg_path))
+        cfg = appliance.load_config()
+        assert cfg["print_mode"] == "off"
+        assert "enabled" not in cfg
+        assert "quiet_enabled" not in cfg
+
+    def test_legacy_enabled_quiet_on_migrates_to_scheduled(self, tmp_path, monkeypatch):
+        import json
+        from pi import appliance
+        cfg_path = tmp_path / "config.json"
+        cfg_path.write_text(json.dumps({"enabled": True, "quiet_enabled": True}))
+        monkeypatch.setattr(appliance, "CONFIG_PATH", str(cfg_path))
+        cfg = appliance.load_config()
+        assert cfg["print_mode"] == "scheduled"
+
+    def test_legacy_enabled_quiet_off_migrates_to_on(self, tmp_path, monkeypatch):
+        import json
+        from pi import appliance
+        cfg_path = tmp_path / "config.json"
+        cfg_path.write_text(json.dumps({"enabled": True, "quiet_enabled": False}))
+        monkeypatch.setattr(appliance, "CONFIG_PATH", str(cfg_path))
+        cfg = appliance.load_config()
+        assert cfg["print_mode"] == "on"
+
+    def test_new_config_no_migration(self, tmp_path, monkeypatch):
+        import json
+        from pi import appliance
+        cfg_path = tmp_path / "config.json"
+        cfg_path.write_text(json.dumps({"print_mode": "off"}))
+        monkeypatch.setattr(appliance, "CONFIG_PATH", str(cfg_path))
+        cfg = appliance.load_config()
+        assert cfg["print_mode"] == "off"
 
 
 class TestPasswordHashing:
