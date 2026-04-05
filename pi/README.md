@@ -302,18 +302,3 @@ Your Phone/Laptop                    Raspberry Pi Zero
 | `printpulse-wifi` | Runs once at boot: checks WiFi, tries SD card config, falls back to AP mode |
 | `printpulse-web` | Flask web UI on port 5000 (also serves the WiFi captive portal) |
 | `printpulse` | RSS feed watcher + thermal printer |
-| `printpulse-tunnel` | (Optional) Cloudflare Tunnel for internet access |
-
----
-
-## Internet Access via Cloudflare Tunnel (Optional)
-
-Want to check your PrintPulse from outside your home? Run the tunnel setup script after the main setup:
-
-```bash
-bash ~/PrintPulse/pi/setup-cloudflare-tunnel.sh
-```
-
-This installs `cloudflared`, creates a secure tunnel to Cloudflare, and gives you an HTTPS URL like `https://printpulse.yourdomain.com`. No static IP or port forwarding needed.
-
-See [docs/cloudflare-tunnel.md](../docs/cloudflare-tunnel.md) for full details.
