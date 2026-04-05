@@ -137,6 +137,7 @@ def _append_update_log(result: str, changed: bool, *,
         "changed": changed,
         "status": status or ("updated" if changed else "up_to_date"),
         "description": description,
+        "version": _APP_VERSION,
     })
     if len(log) > _UPDATE_LOG_MAX:
         log = log[-_UPDATE_LOG_MAX:]
@@ -706,39 +707,16 @@ def update():
     if _check_rate_limit(f"update:{client_ip}"):
         abort(429)
 
-    results = []
+    result_msg, changed, status, description = _run_auto_update()
 
-    # Git pull
-    try:
-        result = subprocess.run(
-            ["git", "-C", _project_root, "pull", "--ff-only"],
-            capture_output=True, text=True, timeout=30,
-        )
-        pull_output = result.stdout.strip()
-        if result.returncode != 0:
-            pull_output = result.stderr.strip() or "git pull failed"
-        results.append(f"git pull: {pull_output}")
-        logger.info("Update git pull: %s", pull_output)
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        results.append(f"git pull failed: {type(exc).__name__}")
-        logger.error("Update git pull failed: %s", type(exc).__name__)
+    # Prefix description to indicate this was a manual update
+    if description:
+        description = f"(manual) {description}"
+    else:
+        description = "(manual update)"
 
-    # Restart services
-    for svc in ["printpulse", "printpulse-web"]:
-        try:
-            subprocess.run(
-                ["sudo", "systemctl", "restart", svc],
-                timeout=10,
-            )
-            results.append(f"{svc}: restarted")
-            logger.info("Update restarted %s", svc)
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            results.append(f"{svc}: restart failed ({type(exc).__name__})")
-            logger.error("Update failed to restart %s: %s", svc, type(exc).__name__)
-
-    # Refresh version after update
-    global _APP_VERSION
-    _APP_VERSION = _get_version_info()
+    _append_update_log(result_msg, changed, status=status,
+                       description=description)
 
     return redirect(url_for("index"))
 
@@ -864,6 +842,29 @@ def toggle_enabled():
     return redirect(url_for("index"))
 
 
+def _get_recent_commits(count: int = 10) -> list[dict]:
+    """Get recent git commits as a list of dicts with hash, subject, date."""
+    commits = []
+    try:
+        result = subprocess.run(
+            ["git", "-C", _project_root, "log",
+             f"-{count}", "--format=%h|%s|%ci"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().splitlines():
+                parts = line.split("|", 2)
+                if len(parts) == 3:
+                    commits.append({
+                        "hash": parts[0],
+                        "subject": parts[1],
+                        "date": parts[2],
+                    })
+    except Exception:
+        pass
+    return commits
+
+
 @app.route("/update_log")
 @require_auth
 def update_log():
@@ -871,11 +872,13 @@ def update_log():
     items = _load_update_log()
     items = list(reversed(items))  # newest first
     config = load_config()
+    recent_commits = _get_recent_commits()
     return render_template(
         "update_log.html",
         items=items,
         config=config,
         version=_APP_VERSION,
+        recent_commits=recent_commits,
     )
 
 
