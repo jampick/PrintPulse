@@ -174,7 +174,7 @@ def _run_auto_update() -> tuple[str, bool, str, str]:
     changed = "already up to date" not in pull_output.lower()
 
     if not changed:
-        return "Already up to date.", False, "up_to_date", ""
+        return "Already up to date.", False, "up_to_date", f"Current version: {_APP_VERSION}"
 
     # Capture commit summaries for the description
     description = ""
@@ -793,12 +793,29 @@ def test_print():
 @require_auth
 def status_api():
     """JSON endpoint for live status polling."""
+    cfg = load_config()
     return jsonify({
         "service": _service_status(),
         "printer": _printer_detected(),
         "auto_update": _auto_update_state.copy(),
         "quiet_hours": _quiet_hours_active(),
+        "enabled": cfg.get("enabled", True),
     })
+
+
+@app.route("/toggle_enabled", methods=["POST"])
+@require_auth
+def toggle_enabled():
+    """Toggle the print enabled/disabled state."""
+    client_ip = request.remote_addr or "unknown"
+    if _check_rate_limit(f"toggle:{client_ip}"):
+        abort(429)
+
+    config = load_config()
+    config["enabled"] = not config.get("enabled", True)
+    save_config(config)
+    logger.info("Printing %s via toggle button.", "enabled" if config["enabled"] else "disabled")
+    return redirect(url_for("index"))
 
 
 @app.route("/update_log")
@@ -817,4 +834,8 @@ def update_log():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    # Bind to 127.0.0.1 by default for security (use Cloudflare Tunnel
+    # or a reverse proxy for internet access). Set PRINTPULSE_BIND_ALL=1
+    # to restore 0.0.0.0 binding for direct LAN access without a tunnel.
+    host = "0.0.0.0" if os.environ.get("PRINTPULSE_BIND_ALL") == "1" else "127.0.0.1"
+    app.run(host=host, port=5000, debug=False)
