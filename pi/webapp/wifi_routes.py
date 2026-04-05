@@ -11,11 +11,26 @@ from __future__ import annotations
 
 import logging
 
-from flask import Blueprint, render_template, request, redirect, jsonify
+from flask import Blueprint, render_template, request, redirect, jsonify, abort
 
 logger = logging.getLogger("printpulse.wifi_routes")
 
 wifi_bp = Blueprint("wifi", __name__)
+
+
+def _require_auth_for_reset():
+    """Check auth for the wifi reset endpoint (imported lazily to avoid circular imports)."""
+    from pi.webapp.server import _is_auth_configured, _check_rate_limit
+    from flask import session, redirect, url_for
+
+    if _is_auth_configured() and not session.get("authenticated"):
+        return redirect(url_for("login"))
+
+    client_ip = request.remote_addr or "unknown"
+    if _check_rate_limit(f"wifi_reset:{client_ip}"):
+        abort(429)
+
+    return None
 
 
 def _get_provision_module():
@@ -83,7 +98,14 @@ def wifi_connect():
 
 @wifi_bp.route("/wifi/reset", methods=["POST"])
 def wifi_reset():
-    """Drop back to AP mode (called from the main web UI)."""
+    """Drop back to AP mode (called from the main web UI).
+
+    Requires authentication since this is a destructive network operation.
+    """
+    auth_redirect = _require_auth_for_reset()
+    if auth_redirect is not None:
+        return auth_redirect
+
     prov = _get_provision_module()
     ok = prov["start_ap"]()
     if ok:
