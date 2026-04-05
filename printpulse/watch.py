@@ -299,14 +299,21 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                 quiet_queue = _load_quiet_queue()
                 if quiet_queue and not (use_quiet and _is_in_quiet_hours(quiet_start, quiet_end)):
                     live.stop()
-                    _save_quiet_queue([])  # Clear before printing so a crash doesn't re-print
                     if quiet_wake_mode == "latest":
+                        _save_quiet_queue([])  # Clear entire queue
                         total_queued = len(quiet_queue)
                         quiet_queue = _filter_quiet_queue_latest(quiet_queue)
                         skipped = total_queued - len(quiet_queue)
                         msg = (f"Quiet hours ended — printing {len(quiet_queue)} latest item(s)"
                                f" ({skipped} older item(s) discarded).")
+                    elif quiet_wake_mode == "next":
+                        # Print only the oldest item, keep the rest queued
+                        quiet_queue, remaining = quiet_queue[:1], quiet_queue[1:]
+                        _save_quiet_queue(remaining)
+                        msg = (f"Quiet hours ended — printing next item"
+                               f" ({len(remaining)} still queued).")
                     else:
+                        _save_quiet_queue([])  # Clear entire queue
                         msg = f"Quiet hours ended — printing {len(quiet_queue)} saved item(s)."
                     ui.retro_panel("QUIET QUEUE", msg, theme)
                     for i, q_item in enumerate(quiet_queue, 1):
