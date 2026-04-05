@@ -936,8 +936,4 @@ def update_log():
 
 
 if __name__ == "__main__":
-    # Bind to 127.0.0.1 by default for security (use Cloudflare Tunnel
-    # or a reverse proxy for internet access). Set PRINTPULSE_BIND_ALL=1
-    # to restore 0.0.0.0 binding for direct LAN access without a tunnel.
-    host = "0.0.0.0" if os.environ.get("PRINTPULSE_BIND_ALL") == "1" else "127.0.0.1"
-    app.run(host=host, port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=False)
