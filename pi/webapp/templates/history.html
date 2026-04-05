@@ -64,6 +64,29 @@
             color: var(--primary);
         }
 
+        .flash-messages {
+            max-width: 600px;
+            margin: 0 auto 15px auto;
+        }
+
+        .flash {
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border);
+            font-size: 0.85em;
+            background: #0d0d0d;
+        }
+
+        .flash-success {
+            color: var(--primary);
+            border-color: var(--mid);
+        }
+
+        .flash-error {
+            color: #ff4444;
+            border-color: #662222;
+        }
+
         .panel {
             border: 2px solid var(--border);
             padding: 20px;
@@ -82,10 +105,19 @@
         .history-item {
             padding: 8px 0;
             border-bottom: 1px solid #111;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
         }
 
         .history-item:last-child {
             border-bottom: none;
+        }
+
+        .history-info {
+            flex: 1;
+            min-width: 0;
         }
 
         .history-title {
@@ -97,6 +129,35 @@
             color: var(--help);
             font-size: 0.75em;
             margin-top: 2px;
+        }
+
+        .reprint-form {
+            flex-shrink: 0;
+        }
+
+        .reprint-btn {
+            background: transparent;
+            color: var(--mid);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75em;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color 0.15s, border-color 0.15s, text-shadow 0.15s;
+        }
+
+        .reprint-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+            text-shadow: 0 0 6px var(--glow);
+        }
+
+        .reprint-btn:disabled {
+            color: var(--dim);
+            border-color: #111;
+            cursor: not-allowed;
+            text-shadow: none;
         }
 
         .empty {
@@ -118,15 +179,32 @@
     <div class="subtitle">Print History</div>
     <div class="nav"><a href="/">&laquo; Back to Configuration</a></div>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
     <div class="panel">
         <div class="panel-title">// RECENTLY PRINTED (showing {{ items|length }} of {{ total }})</div>
         {% if items %}
             {% for item in items %}
             <div class="history-item">
-                <div class="history-title">&gt; {{ item.title }}</div>
-                <div class="history-meta">
-                    {% if item.source %}{{ item.source }} &mdash; {% endif %}{{ item.timestamp }}
+                <div class="history-info">
+                    <div class="history-title">&gt; {{ item.title }}</div>
+                    <div class="history-meta">
+                        {% if item.source %}{{ item.source }} &mdash; {% endif %}{{ item.timestamp }}
+                    </div>
                 </div>
+                <form class="reprint-form" method="post" action="/reprint">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="index" value="{{ loop.index0 }}">
+                    <button type="submit" class="reprint-btn" title="Reprint this item">[REPRINT]</button>
+                </form>
             </div>
             {% endfor %}
         {% else %}
