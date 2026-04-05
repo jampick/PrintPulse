@@ -85,7 +85,21 @@
         .status-updated    { color: var(--primary); font-weight: bold; }
         .status-up-to-date { color: var(--mid); }
         .status-error      { color: #ff4444; }
-        .description       { color: var(--mid); font-size: 0.8em; }
+
+        .commit-hash {
+            color: var(--mid);
+            font-size: 0.85em;
+        }
+
+        .commit-subject {
+            color: var(--primary);
+        }
+
+        .commit-date {
+            color: var(--help);
+            font-size: 0.8em;
+            white-space: nowrap;
+        }
 
         .empty {
             color: var(--help);
@@ -113,24 +127,52 @@
     <div class="subtitle">Auto-Update Log</div>
 
     <div class="panel">
-        <div class="panel-title">// UPDATE HISTORY</div>
+        <div class="panel-title">// RECENT COMMITS</div>
+        {% if recent_commits %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Hash</th>
+                    <th>Message</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for commit in recent_commits %}
+                <tr>
+                    <td class="commit-hash">{{ commit.hash }}</td>
+                    <td class="commit-subject">{{ commit.subject }}</td>
+                    <td class="commit-date">{{ commit.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">No git history available.</div>
+        {% endif %}
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">// UPDATE CHECK HISTORY</div>
         {% if items %}
         <table>
             <thead>
                 <tr>
                     <th>Timestamp</th>
-                    <th>Status</th>
-                    <th>Description</th>
+                    <th>Version</th>
+                    <th>Result</th>
+                    <th>Details</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in items %}
                 <tr>
                     <td style="white-space:nowrap; color:var(--mid);">{{ item.timestamp }}</td>
+                    <td style="white-space:nowrap;" class="commit-hash">{{ item.get('version', '') or '&mdash;' }}</td>
                     <td class="{% if item.get('status', '') == 'updated' %}status-updated{% elif item.get('status', '') == 'error' %}status-error{% else %}status-up-to-date{% endif %}">
                         {% if item.get('status', '') == 'updated' %}Updated
                         {% elif item.get('status', '') == 'error' %}Error
-                        {% else %}Up to date{% endif %}
+                        {% else %}No changes{% endif %}
                     </td>
                     <td>{% if item.get('description') %}{{ item.description }}{% elif item.get('status', '') == 'error' %}{{ item.result }}{% else %}&mdash;{% endif %}</td>
                 </tr>
