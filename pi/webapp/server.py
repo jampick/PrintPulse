@@ -35,7 +35,7 @@ if _project_root not in sys.path:
 
 from flask import (
     Flask, render_template, request, redirect, url_for, jsonify,
-    session, abort, g,
+    session, abort, flash, get_flashed_messages, g,
 )
 from pi.appliance import load_config, save_config, verify_password
 
@@ -787,6 +787,52 @@ def test_print():
     if ok:
         return jsonify({"ok": True, "message": "Test print sent successfully."})
     return jsonify({"ok": False, "message": "Print failed — check printer connection."})
+
+
+@app.route("/reprint", methods=["POST"])
+@require_auth
+def reprint():
+    """Reprint a history item by index."""
+    client_ip = request.remote_addr or "unknown"
+    if _check_rate_limit(f"reprint:{client_ip}"):
+        flash("Rate limit exceeded. Try again shortly.", "error")
+        return redirect(url_for("history"))
+
+    from printpulse.watch import load_history
+    from printpulse.thermal import print_news_item
+
+    try:
+        idx = int(request.form.get("index", -1))
+    except (ValueError, TypeError):
+        flash("Invalid item index.", "error")
+        return redirect(url_for("history"))
+
+    items = load_history()
+    items.reverse()  # newest first, matching display order
+
+    if idx < 0 or idx >= len(items):
+        flash("History item not found.", "error")
+        return redirect(url_for("history"))
+
+    item = items[idx]
+    from datetime import datetime
+    timestamp = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
+
+    ok = print_news_item(
+        title=item.get("title", "Untitled"),
+        summary="(reprint from history)",
+        source=item.get("source", ""),
+        timestamp=timestamp,
+    )
+
+    if ok:
+        logger.info("Reprint requested for item %d: %s — success", idx, item.get("title", ""))
+        flash("Reprint sent to printer.", "success")
+    else:
+        logger.warning("Reprint requested for item %d: %s — failed", idx, item.get("title", ""))
+        flash("Reprint failed — check printer connection.", "error")
+
+    return redirect(url_for("history"))
 
 
 @app.route("/status")
