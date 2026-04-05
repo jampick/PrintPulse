@@ -22,6 +22,8 @@ Hey folks — this is my first real use of Claude Code, so I hope you find it us
 
 Day-to-day the Pi is controlled entirely from your browser — no SSH required. Open `http://PI_IP:5000` from any device on your network.
 
+Want to access it from outside your home network? Set up a [Cloudflare Tunnel](docs/cloudflare-tunnel.md) — no static IP or port forwarding needed.
+
 **Configuration** — RSS feeds, poll interval, quiet hours, auto-update:
 
 ![PrintPulse web UI — configuration](docs/screenshot-config.png)

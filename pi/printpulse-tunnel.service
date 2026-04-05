@@ -1,0 +1,16 @@
+[Unit]
+Description=PrintPulse Cloudflare Tunnel
+After=network-online.target printpulse-web.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/usr/bin/cloudflared tunnel run printpulse
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
