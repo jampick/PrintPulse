@@ -20,6 +20,7 @@ import logging
 import os
 import re
 import secrets
+import socket
 import subprocess
 import sys
 import threading
@@ -93,9 +94,19 @@ def _get_version_info() -> str:
 
 _APP_VERSION = _get_version_info()
 
-# Load secret key from config (generated during setup)
+# Load secret key from config — generate and persist if missing
 _cfg = load_config()
-app.secret_key = _cfg.get("secret_key") or secrets.token_hex(32)
+if not _cfg.get("secret_key"):
+    _cfg["secret_key"] = secrets.token_hex(32)
+    save_config(_cfg)
+    logger.info("Generated and persisted new Flask secret key.")
+app.secret_key = _cfg["secret_key"]
+
+# Harden session cookies
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# SESSION_COOKIE_SECURE is intentionally False — this is a LAN HTTP appliance
+app.config["SESSION_COOKIE_SECURE"] = False
 
 
 # ─── Auto-Update ────────────────────────────────────────────────────────────
@@ -260,22 +271,36 @@ _update_thread.start()
 # ─── Rate Limiting ──────────────────────────────────────────────────────────
 
 _rate_limit_store: dict[str, list[float]] = {}
+_RATE_LIMIT_STORE_MAX_KEYS = 256  # cap unique keys to bound memory
 RATE_LIMIT_MAX = 10       # max requests
 RATE_LIMIT_WINDOW = 60    # per 60 seconds
+LOGIN_RATE_LIMIT_MAX = 5  # stricter limit for login attempts
+LOGIN_RATE_LIMIT_WINDOW = 120  # per 2 minutes
 
 
-def _check_rate_limit(key: str) -> bool:
+def _check_rate_limit(key: str, max_requests: int = RATE_LIMIT_MAX,
+                      window: int = RATE_LIMIT_WINDOW) -> bool:
     """Return True if rate limit exceeded."""
     now = time.time()
+
+    # Evict stale keys periodically to prevent unbounded memory growth
+    if len(_rate_limit_store) > _RATE_LIMIT_STORE_MAX_KEYS:
+        stale_keys = [
+            k for k, timestamps in _rate_limit_store.items()
+            if not timestamps or now - timestamps[-1] > window
+        ]
+        for k in stale_keys:
+            del _rate_limit_store[k]
+
     if key not in _rate_limit_store:
         _rate_limit_store[key] = []
 
     # Remove old entries outside the window
     _rate_limit_store[key] = [
-        t for t in _rate_limit_store[key] if now - t < RATE_LIMIT_WINDOW
+        t for t in _rate_limit_store[key] if now - t < window
     ]
 
-    if len(_rate_limit_store[key]) >= RATE_LIMIT_MAX:
+    if len(_rate_limit_store[key]) >= max_requests:
         return True
 
     _rate_limit_store[key].append(now)
@@ -310,8 +335,10 @@ def login():
     error = None
     if request.method == "POST":
         client_ip = request.remote_addr or "unknown"
-        if _check_rate_limit(f"login:{client_ip}"):
-            error = "Too many attempts. Try again in a minute."
+        if _check_rate_limit(f"login:{client_ip}",
+                             max_requests=LOGIN_RATE_LIMIT_MAX,
+                             window=LOGIN_RATE_LIMIT_WINDOW):
+            error = "Too many attempts. Try again in a few minutes."
         else:
             cfg = load_config()
             username = request.form.get("username", "")
@@ -367,9 +394,15 @@ def _add_security_headers(response):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline';"
+        "style-src 'self' 'unsafe-inline'; "
+        "form-action 'self';"
     )
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    # Prevent caching of authenticated HTML pages (not static assets)
+    if response.content_type and "text/html" in response.content_type:
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
     return response
 
 
@@ -399,7 +432,11 @@ _PRIVATE_NETWORKS = [
 
 
 def _is_private_hostname(hostname: str) -> bool:
-    """Check if a hostname resolves to a private/reserved IP."""
+    """Check if a hostname resolves to a private/reserved IP.
+
+    Performs actual DNS resolution to catch domain names that point to
+    private IPs (DNS rebinding / SSRF bypass).
+    """
     # Block obvious localhost aliases
     if hostname.lower() in ("localhost", "localhost.localdomain", "0.0.0.0"):
         return True
@@ -409,7 +446,23 @@ def _is_private_hostname(hostname: str) -> bool:
         addr = ipaddress.ip_address(hostname)
         return any(addr in net for net in _PRIVATE_NETWORKS)
     except ValueError:
-        pass  # Not a raw IP, could be a domain name — allow it
+        pass  # Not a raw IP — resolve it
+
+    # Resolve hostname and check all addresses
+    try:
+        addrinfos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC,
+                                       socket.SOCK_STREAM)
+        for family, _type, _proto, _canonname, sockaddr in addrinfos:
+            ip_str = sockaddr[0]
+            try:
+                addr = ipaddress.ip_address(ip_str)
+                if any(addr in net for net in _PRIVATE_NETWORKS):
+                    return True
+            except ValueError:
+                continue
+    except (socket.gaierror, OSError):
+        # DNS resolution failed — allow the URL (it will fail at fetch time)
+        pass
 
     return False
 

@@ -11,6 +11,9 @@ import secrets
 
 from printpulse.secure_fs import secure_write_json
 
+# PBKDF2 iterations — OWASP 2023 recommends >= 600,000 for SHA-256
+_PBKDF2_ITERATIONS = 600_000
+
 CONFIG_PATH = os.path.expanduser("~/.printpulse_appliance.json")
 
 
@@ -58,22 +61,48 @@ def save_config(data: dict) -> None:
 
 
 def hash_password(password: str) -> str:
-    """Hash a password with a random salt using SHA-256.
+    """Hash a password using PBKDF2-HMAC-SHA256 with a random salt.
 
-    Returns 'salt:hash' string for storage.
+    Returns 'pbkdf2:iterations:salt:hash' string for storage.
+    Previous format ('salt:sha256hash') is still accepted by verify_password
+    for backward compatibility, but new hashes always use PBKDF2.
     """
     salt = secrets.token_hex(16)
-    h = hashlib.sha256(f"{salt}:{password}".encode()).hexdigest()
-    return f"{salt}:{h}"
+    h = hashlib.pbkdf2_hmac(
+        "sha256", password.encode(), salt.encode(), _PBKDF2_ITERATIONS,
+    ).hex()
+    return f"pbkdf2:{_PBKDF2_ITERATIONS}:{salt}:{h}"
 
 
 def verify_password(password: str, stored_hash: str) -> bool:
-    """Verify a password against a stored 'salt:hash' string."""
-    if ":" not in stored_hash:
+    """Verify a password against a stored hash string.
+
+    Supports both the new PBKDF2 format ('pbkdf2:iterations:salt:hash')
+    and the legacy SHA-256 format ('salt:sha256hash') for backward
+    compatibility with existing config files.
+    """
+    if not stored_hash or ":" not in stored_hash:
         return False
-    salt, expected = stored_hash.split(":", 1)
-    h = hashlib.sha256(f"{salt}:{password}".encode()).hexdigest()
-    return secrets.compare_digest(h, expected)
+
+    if stored_hash.startswith("pbkdf2:"):
+        # New PBKDF2 format
+        parts = stored_hash.split(":", 3)
+        if len(parts) != 4:
+            return False
+        _, iterations_str, salt, expected = parts
+        try:
+            iterations = int(iterations_str)
+        except ValueError:
+            return False
+        h = hashlib.pbkdf2_hmac(
+            "sha256", password.encode(), salt.encode(), iterations,
+        ).hex()
+        return secrets.compare_digest(h, expected)
+    else:
+        # Legacy SHA-256 format for backward compatibility
+        salt, expected = stored_hash.split(":", 1)
+        h = hashlib.sha256(f"{salt}:{password}".encode()).hexdigest()
+        return secrets.compare_digest(h, expected)
 
 
 def generate_secret_key() -> str:

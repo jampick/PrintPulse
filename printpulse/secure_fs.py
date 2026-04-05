@@ -27,21 +27,45 @@ def secure_makedirs(path: str, mode: int = _DIR_MODE) -> None:
 
 
 def secure_write_json(path: str, data, indent: int = 2) -> None:
-    """Write JSON to a file with secure permissions."""
+    """Write JSON to a file with secure permissions.
+
+    Uses atomic write (temp file + rename) to avoid partial writes on crash.
+    On Unix, the file is created with owner-only permissions from the start
+    (no TOCTOU window where the file is world-readable).
+    """
     import json
 
     dir_path = os.path.dirname(path)
     if dir_path:
         secure_makedirs(dir_path)
 
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=indent, ensure_ascii=False)
+    content = json.dumps(data, indent=indent, ensure_ascii=False)
 
     if _IS_UNIX:
+        # Open with restrictive permissions from the start (no chmod race)
+        fd = os.open(
+            path + ".tmp",
+            os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+            _FILE_MODE,
+        )
         try:
-            os.chmod(path, _FILE_MODE)
-        except OSError:
-            pass
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(path + ".tmp", path)
+        except BaseException:
+            # Clean up temp file on failure
+            try:
+                os.unlink(path + ".tmp")
+            except OSError:
+                pass
+            raise
+    else:
+        # Windows fallback — no atomic rename guarantees
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.flush()
 
 
 def secure_tempfile(suffix: str = ".tmp", prefix: str = "printpulse_") -> str:

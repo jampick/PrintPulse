@@ -45,13 +45,15 @@ class TestDefaultConfig:
 
 
 class TestPasswordHashing:
-    def test_hash_produces_salt_colon_hash(self):
+    def test_hash_produces_pbkdf2_format(self):
         result = hash_password("test123")
-        assert ":" in result
-        parts = result.split(":", 1)
-        assert len(parts) == 2
-        assert len(parts[0]) == 32  # 16 bytes hex = 32 chars
-        assert len(parts[1]) == 64  # SHA-256 hex = 64 chars
+        assert result.startswith("pbkdf2:")
+        parts = result.split(":")
+        assert len(parts) == 4  # pbkdf2:iterations:salt:hash
+        assert parts[0] == "pbkdf2"
+        assert int(parts[1]) >= 600_000
+        assert len(parts[2]) == 32  # 16 bytes hex = 32 chars
+        assert len(parts[3]) == 64  # SHA-256 hex = 64 chars
 
     def test_verify_correct_password(self):
         hashed = hash_password("mypassword")
@@ -78,6 +80,16 @@ class TestPasswordHashing:
         h2 = hash_password("same")
         assert verify_password("same", h1) is True
         assert verify_password("same", h2) is True
+
+    def test_legacy_sha256_format_still_verifies(self):
+        """Existing configs with old SHA-256 hashes should still work."""
+        import hashlib
+        import secrets as _secrets
+        salt = _secrets.token_hex(16)
+        h = hashlib.sha256(f"{salt}:legacypass".encode()).hexdigest()
+        legacy_hash = f"{salt}:{h}"
+        assert verify_password("legacypass", legacy_hash) is True
+        assert verify_password("wrongpass", legacy_hash) is False
 
 
 class TestSecretKey:
