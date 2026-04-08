@@ -68,6 +68,7 @@ def fetch_new_items(feed_url: str, max_items: int = 3) -> list[dict]:
             "id": entry_id,
             "title": title,
             "summary": entry.get("summary", ""),
+            "link": getattr(entry, "link", ""),
             "_entry": entry,  # raw feedparser entry for image extraction
             "_source": feed_title,
         })
@@ -107,6 +108,7 @@ def _append_history(items: list[dict]):
         history.append({
             "title": item["title"],
             "source": item.get("_source", ""),
+            "link": item.get("link", ""),
             "timestamp": now_str,
         })
     # Trim to max
@@ -144,6 +146,7 @@ def _add_to_retry(item: dict):
         "id": item.get("id", ""),
         "title": item.get("title", ""),
         "summary": item.get("summary", ""),
+        "link": item.get("link", ""),
         "_source": item.get("_source", ""),
         "attempts": 1,
     })
@@ -183,6 +186,7 @@ def _enqueue_quiet_items(items: list[dict]):
                 "id": item.get("id", ""),
                 "title": item.get("title", ""),
                 "summary": item.get("summary", ""),
+                "link": item.get("link", ""),
                 "_source": item.get("_source", ""),
             })
             existing_ids.add(item.get("id"))
@@ -326,6 +330,7 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                         fake_item = {
                             "id": q_item["id"], "title": title,
                             "summary": q_item.get("summary", ""),
+                            "link": q_item.get("link", ""),
                             "_source": source,
                         }
                         try:
@@ -361,6 +366,7 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                         fake_item = {
                             "id": r_item["id"], "title": title,
                             "summary": r_item.get("summary", ""),
+                            "link": r_item.get("link", ""),
                             "_source": r_item.get("_source", ""),
                         }
                         try:
