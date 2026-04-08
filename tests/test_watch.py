@@ -9,11 +9,13 @@ import pytest
 
 from printpulse.watch import (
     QUIET_QUEUE_FILE,
+    _append_history,
     _enqueue_quiet_items,
     _filter_quiet_queue_latest,
     _is_in_quiet_hours,
     _load_quiet_queue,
     _save_quiet_queue,
+    load_history,
 )
 
 
@@ -125,6 +127,12 @@ class TestQuietQueue:
         assert queue[0]["id"] == "a1"
         assert queue[1]["id"] == "a2"
 
+    def test_enqueue_preserves_link(self):
+        items = [{"id": "link1", "title": "Story", "summary": "", "link": "https://example.com/story", "_source": "Feed"}]
+        _enqueue_quiet_items(items)
+        queue = _load_quiet_queue()
+        assert queue[0]["link"] == "https://example.com/story"
+
     def test_enqueue_skips_duplicates(self):
         item = {"id": "dup", "title": "Dupe Story", "summary": "", "_source": "X"}
         _enqueue_quiet_items([item])
@@ -195,3 +203,24 @@ class TestFilterQuietQueueLatest:
         result = _filter_quiet_queue_latest(queue)
         assert len(result) == 1
         assert result[0]["id"] == "2"
+
+
+class TestHistoryLink:
+    """Test that history entries persist the article link."""
+
+    @pytest.fixture(autouse=True)
+    def _use_tmp_history(self, monkeypatch, tmp_path):
+        monkeypatch.setattr("printpulse.watch.HISTORY_FILE", str(tmp_path / "history.json"))
+
+    def test_append_history_stores_link(self):
+        items = [{"title": "Breaking News", "_source": "BBC", "link": "https://bbc.com/story"}]
+        _append_history(items)
+        history = load_history()
+        assert len(history) == 1
+        assert history[0]["link"] == "https://bbc.com/story"
+
+    def test_append_history_missing_link_defaults_empty(self):
+        items = [{"title": "No Link Item", "_source": "Manual"}]
+        _append_history(items)
+        history = load_history()
+        assert history[0]["link"] == ""
