@@ -7,6 +7,7 @@ import svgwrite
 
 from printpulse.config import Config, FONT_MAP
 from printpulse import ui
+from printpulse.text_sanitize import sanitize_for_print as _sanitize_text
 
 
 def get_available_fonts() -> list[tuple[str, str]]:
@@ -29,41 +30,6 @@ def get_available_fonts() -> list[tuple[str, str]]:
         result.append((font_id, font_id))
 
     return result
-
-
-def _sanitize_text(text: str) -> str:
-    """Replace Unicode typographic characters with ASCII equivalents.
-
-    RSS feeds and word processors often use smart quotes, em-dashes, and
-    other fancy Unicode that Hershey fonts / thermal printers can't render.
-    """
-    replacements = {
-        "\u2018": "'",   # left single curly quote
-        "\u2019": "'",   # right single curly quote (smart apostrophe)
-        "\u201A": "'",   # single low-9 quotation mark
-        "\u201C": '"',   # left double curly quote
-        "\u201D": '"',   # right double curly quote
-        "\u201E": '"',   # double low-9 quotation mark
-        "\u2013": "-",   # en-dash
-        "\u2014": "--",  # em-dash
-        "\u2026": "...", # ellipsis
-        "\u00A0": " ",   # non-breaking space
-        "\u2032": "'",   # prime
-        "\u2033": '"',   # double prime
-        "\u2010": "-",   # hyphen
-        "\u2011": "-",   # non-breaking hyphen
-        "\u00AB": '"',   # left guillemet
-        "\u00BB": '"',   # right guillemet
-        "\u2039": "'",   # single left angle quote
-        "\u203A": "'",   # single right angle quote
-        "\uFEFF": "",    # BOM / zero-width no-break space
-        "\u200B": "",    # zero-width space
-        "\u200C": "",    # zero-width non-joiner
-        "\u200D": "",    # zero-width joiner
-    }
-    for char, replacement in replacements.items():
-        text = text.replace(char, replacement)
-    return text
 
 
 def _measure_text_width(font, text: str) -> float:

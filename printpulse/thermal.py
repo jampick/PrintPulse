@@ -12,6 +12,7 @@ import struct
 import textwrap
 
 from printpulse import ui
+from printpulse.text_sanitize import sanitize_for_print as _sanitize_for_thermal
 
 # ─── Printer Defaults ───
 PRINTER_NAME_WIN = "PrintMojo"          # Windows printer name
@@ -36,41 +37,6 @@ CMD_PARTIAL_CUT = GS + b'\x56\x01'
 
 SEPARATOR = b'-' * LINE_WIDTH + b'\n'
 THICK_SEP = b'=' * LINE_WIDTH + b'\n'
-
-
-def _sanitize_for_thermal(text: str) -> str:
-    """Replace Unicode typographic characters with ASCII equivalents.
-
-    Thermal printers typically support only ASCII / Latin-1 and will render
-    multi-byte UTF-8 characters (smart quotes, em-dashes, etc.) as garbage.
-    """
-    replacements = {
-        "\u2018": "'",   # left single curly quote
-        "\u2019": "'",   # right single curly quote / smart apostrophe
-        "\u201A": "'",   # single low-9 quotation mark
-        "\u201C": '"',   # left double curly quote
-        "\u201D": '"',   # right double curly quote
-        "\u201E": '"',   # double low-9 quotation mark
-        "\u2013": "-",   # en-dash
-        "\u2014": "--",  # em-dash
-        "\u2026": "...", # ellipsis
-        "\u00A0": " ",   # non-breaking space
-        "\u200B": "",    # zero-width space
-        "\u00AB": '"',   # left guillemet
-        "\u00BB": '"',   # right guillemet
-        "\u2039": "'",   # single left angle quote
-        "\u203A": "'",   # single right angle quote
-        "\u02BC": "'",   # modifier letter apostrophe
-        "\u2032": "'",   # prime
-        "\u2033": '"',   # double prime
-        "\u2010": "-",   # hyphen
-        "\u2011": "-",   # non-breaking hyphen
-        "\u2012": "-",   # figure dash
-        "\uFEFF": "",    # BOM / zero-width no-break space
-    }
-    for src, dst in replacements.items():
-        text = text.replace(src, dst)
-    return text
 
 
 def _wrap(text: str, width: int = LINE_WIDTH) -> str:
