@@ -256,3 +256,38 @@ class TestPrivateHostname:
 
     def test_zero_addr_is_private(self):
         assert _is_private_hostname("0.0.0.0") is True
+
+
+# ─── Quiet Hours Timezone Validation ────────────────────────────────────────
+
+
+class TestQuietTzValidation:
+    def _form(self, quiet_tz=""):
+        return FakeForm(
+            feeds="", interval="300", max_prints="3",
+            theme="green", printer_device="/dev/usb/lp0",
+            quiet_tz=quiet_tz,
+        )
+
+    def test_empty_string_accepted(self):
+        data, errors = validate_save_input(self._form(""))
+        assert not errors
+        assert data["quiet_tz"] == ""
+
+    def test_valid_iana_tz_accepted(self):
+        data, errors = validate_save_input(self._form("America/New_York"))
+        assert not errors
+        assert data["quiet_tz"] == "America/New_York"
+
+    def test_utc_accepted(self):
+        data, errors = validate_save_input(self._form("UTC"))
+        assert not errors
+        assert data["quiet_tz"] == "UTC"
+
+    def test_invalid_tz_rejected(self):
+        _, errors = validate_save_input(self._form("Not/AReal_Zone"))
+        assert any("timezone" in e.lower() for e in errors)
+
+    def test_injection_attempt_rejected(self):
+        _, errors = validate_save_input(self._form("<script>alert(1)</script>"))
+        assert any("timezone" in e.lower() for e in errors)

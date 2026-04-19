@@ -308,6 +308,16 @@
                     </div>
                 </div>
                 <div style="margin-top: 0.5rem;">
+                    <label for="quiet_tz">Timezone:</label>
+                    <select name="quiet_tz" id="quiet_tz">
+                        {% for tz in timezones %}
+                        <option value="{{ tz }}"{% if config.quiet_tz == tz %} selected{% endif %}>
+                            {%- if tz == "" -%}System default ({{ timezone }}){%- else -%}{{ tz }}{%- endif -%}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="margin-top: 0.5rem;">
                     <label for="quiet_wake_mode">When quiet hours end:</label>
                     <select name="quiet_wake_mode" id="quiet_wake_mode">
                         <option value="latest" {% if config.quiet_wake_mode == 'latest' %}selected{% endif %}>Print only the latest item per source</option>
@@ -315,7 +325,7 @@
                         <option value="all" {% if config.quiet_wake_mode == 'all' %}selected{% endif %}>Print all queued items</option>
                     </select>
                 </div>
-                <div class="help">Printer stays silent between these hours. Timezone: {{ timezone }}</div>
+                <div class="help">Printer stays silent between these hours.</div>
             </div>
         </div>
 

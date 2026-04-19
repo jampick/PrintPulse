@@ -58,6 +58,9 @@ def main():
         quiet_start = config.get("quiet_start", "22:00")
         quiet_end = config.get("quiet_end", "08:00")
         argv.extend(["--quiet-start", quiet_start, "--quiet-end", quiet_end])
+        quiet_tz = config.get("quiet_tz", "")
+        if quiet_tz:
+            argv.extend(["--quiet-tz", quiet_tz])
         wake_mode = config.get("quiet_wake_mode", "latest")
         argv.extend(["--quiet-wake-mode", wake_mode])
 

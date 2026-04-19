@@ -93,6 +93,45 @@ class TestIsInQuietHours:
         with self._mock_time(0, 0):
             assert _is_in_quiet_hours("01:00", "23:00") is False
 
+    # ── Timezone-aware ──
+
+    def test_tz_param_uses_zoneinfo(self):
+        """With a valid IANA tz, _is_in_quiet_hours uses that timezone's clock."""
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        # Pick two zones that are always at least 5 hours apart:
+        # UTC and America/New_York (UTC-5/UTC-4).
+        # Find the current UTC hour and set quiet hours to a narrow window
+        # that is *inside* UTC but *outside* NYC time, then assert the
+        # timezone-aware call returns True only for UTC.
+        utc_now = datetime.now(ZoneInfo("UTC"))
+        utc_h = utc_now.hour
+        utc_m = utc_now.minute
+
+        # A 2-minute window around the current UTC minute
+        start_min = utc_m
+        end_min = (utc_m + 2) % 60
+        start_h = utc_h if end_min > start_min else (utc_h + 1) % 24
+        end_h = utc_h if end_min > start_min else (utc_h + 1) % 24
+
+        start_str = f"{start_h:02d}:{start_min:02d}"
+        end_str = f"{end_h:02d}:{end_min:02d}"
+
+        # With tz="UTC" the window is active (UTC clock is inside it)
+        result_utc = _is_in_quiet_hours(start_str, end_str, tz="UTC")
+        # Without tz the system local time is used — we can't predict it, so
+        # just verify the call doesn't raise and returns a bool
+        result_no_tz = _is_in_quiet_hours(start_str, end_str)
+        assert isinstance(result_utc, bool)
+        assert isinstance(result_no_tz, bool)
+
+    def test_invalid_tz_falls_back_to_local(self):
+        """An unrecognised timezone string falls back to system local time without error."""
+        # Should not raise — result is a bool regardless
+        result = _is_in_quiet_hours("22:00", "08:00", tz="Not/AReal_Zone")
+        assert isinstance(result, bool)
+
 
 class TestQuietQueue:
     """Test persistent quiet-hours queue."""

@@ -62,6 +62,55 @@ def _get_system_timezone() -> str:
         return "unknown"
 
 
+# Curated list of IANA timezone names shown in the quiet-hours dropdown.
+# Empty string ("") means "use system timezone".
+SELECTABLE_TIMEZONES: list[str] = [
+    "",  # System default
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "America/Anchorage",
+    "America/Honolulu",
+    "America/Phoenix",
+    "America/Toronto",
+    "America/Vancouver",
+    "America/Sao_Paulo",
+    "America/Argentina/Buenos_Aires",
+    "America/Mexico_City",
+    "Europe/London",
+    "Europe/Paris",
+    "Europe/Berlin",
+    "Europe/Madrid",
+    "Europe/Rome",
+    "Europe/Amsterdam",
+    "Europe/Stockholm",
+    "Europe/Helsinki",
+    "Europe/Athens",
+    "Europe/Istanbul",
+    "Europe/Moscow",
+    "Africa/Cairo",
+    "Africa/Johannesburg",
+    "Africa/Lagos",
+    "Asia/Dubai",
+    "Asia/Kolkata",
+    "Asia/Dhaka",
+    "Asia/Bangkok",
+    "Asia/Singapore",
+    "Asia/Shanghai",
+    "Asia/Tokyo",
+    "Asia/Seoul",
+    "Asia/Taipei",
+    "Asia/Jakarta",
+    "Australia/Sydney",
+    "Australia/Melbourne",
+    "Australia/Perth",
+    "Pacific/Auckland",
+    "Pacific/Honolulu",
+    "UTC",
+]
+
+
 # ─── Version Info ──────────────────────────────────────────────────────────
 
 def _get_version_info() -> str:
@@ -556,6 +605,11 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         errors.append("Quiet wake mode must be 'latest', 'all', or 'next'.")
         quiet_wake_mode = "latest"
 
+    quiet_tz = form.get("quiet_tz", "").strip()
+    if quiet_tz and quiet_tz not in SELECTABLE_TIMEZONES:
+        errors.append("Invalid timezone selection.")
+        quiet_tz = ""
+
     # --- Auto-update ---
     auto_update_enabled = form.get("auto_update_enabled") == "1"
     _valid_intervals = {1, 6, 12, 24}
@@ -594,6 +648,7 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         "print_mode": print_mode,
         "quiet_start": quiet_start,
         "quiet_end": quiet_end,
+        "quiet_tz": quiet_tz,
         "quiet_wake_mode": quiet_wake_mode,
         "auto_update_enabled": auto_update_enabled,
         "auto_update_interval": auto_update_interval,
@@ -626,6 +681,7 @@ def _quiet_hours_active() -> dict:
     """Check if quiet hours are currently active.
 
     Returns dict with 'enabled', 'active', 'start', 'end' keys.
+    Respects the configured quiet_tz timezone when set.
     """
     from datetime import datetime, time as dtime
 
@@ -633,11 +689,20 @@ def _quiet_hours_active() -> dict:
     print_mode = config.get("print_mode", "scheduled")
     start_str = config.get("quiet_start", "22:00")
     end_str = config.get("quiet_end", "08:00")
+    quiet_tz = config.get("quiet_tz", "")
 
     if print_mode != "scheduled":
         return {"enabled": False, "active": False, "start": start_str, "end": end_str}
 
-    now = datetime.now().time()
+    if quiet_tz:
+        try:
+            from zoneinfo import ZoneInfo
+            now = datetime.now(ZoneInfo(quiet_tz)).time()
+        except Exception:
+            now = datetime.now().time()
+    else:
+        now = datetime.now().time()
+
     start_h, start_m = int(start_str[:2]), int(start_str[3:5])
     end_h, end_m = int(end_str[:2]), int(end_str[3:5])
     start = dtime(start_h, start_m)
@@ -670,6 +735,7 @@ def index():
         errors=[],
         version=_APP_VERSION,
         timezone=_get_system_timezone(),
+        timezones=SELECTABLE_TIMEZONES,
     )
 
 
@@ -696,6 +762,7 @@ def save():
             errors=errors,
             version=_APP_VERSION,
             timezone=_get_system_timezone(),
+            timezones=SELECTABLE_TIMEZONES,
         )
 
     config = load_config()
@@ -707,6 +774,7 @@ def save():
     config["print_mode"] = validated["print_mode"]
     config["quiet_start"] = validated["quiet_start"]
     config["quiet_end"] = validated["quiet_end"]
+    config["quiet_tz"] = validated["quiet_tz"]
     config["quiet_wake_mode"] = validated["quiet_wake_mode"]
     config["auto_update_enabled"] = validated["auto_update_enabled"]
     config["auto_update_interval"] = validated["auto_update_interval"]

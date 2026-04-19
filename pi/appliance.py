@@ -30,6 +30,7 @@ def default_config() -> dict:
         "print_mode": "scheduled",  # "on", "scheduled", or "off"
         "quiet_start": "22:00",
         "quiet_end": "08:00",
+        "quiet_tz": "",  # IANA timezone name, "" = system default
         "quiet_wake_mode": "latest",
         "auth_user": "",
         "auth_hash": "",
