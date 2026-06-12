@@ -824,6 +824,24 @@ def history():
     )
 
 
+def _translated_fields(title: str, summary: str) -> tuple[str, str]:
+    """Translate title/summary per the configured second language.
+
+    Returns ("", "") when no second language is set or translation fails,
+    so callers print English only.
+    """
+    from printpulse import translate
+
+    lang = load_config().get("second_language", "")
+    if not translate.needs_translation(lang):
+        return "", ""
+    t_title = translate.translate_text(title, lang) or ""
+    t_summary = ""
+    if t_title and summary:
+        t_summary = translate.translate_text(summary, lang) or ""
+    return t_title, t_summary
+
+
 @app.route("/test_print", methods=["POST"])
 @require_auth
 def test_print():
@@ -835,19 +853,28 @@ def test_print():
     from datetime import datetime
     from printpulse.thermal import print_news_item
 
+    title = "PrintPulse Test Print"
+    summary = (
+        "This is a test print from the PrintPulse web UI. "
+        "If you can read this, your thermal printer is working correctly."
+    )
+    translated_title, translated_summary = _translated_fields(title, summary)
+
     timestamp = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
     ok = print_news_item(
-        title="PrintPulse Test Print",
-        summary=(
-            "This is a test print from the PrintPulse web UI. "
-            "If you can read this, your thermal printer is working correctly."
-        ),
+        title=title,
+        summary=summary,
         source="PrintPulse Appliance",
         timestamp=timestamp,
+        translated_title=translated_title,
+        translated_summary=translated_summary,
     )
     logger.info("Test print requested: %s", "success" if ok else "failed")
     if ok:
-        return jsonify({"ok": True, "message": "Test print sent successfully."})
+        message = "Test print sent successfully."
+        if translated_title:
+            message = "Bilingual test print sent successfully."
+        return jsonify({"ok": True, "message": message})
     return jsonify({"ok": False, "message": "Print failed — check printer connection."})
 
 
@@ -880,11 +907,14 @@ def reprint():
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
 
+    translated_title, _ = _translated_fields(item.get("title", ""), "")
+
     ok = print_news_item(
         title=item.get("title", "Untitled"),
         summary="(reprint from history)",
         source=item.get("source", ""),
         timestamp=timestamp,
+        translated_title=translated_title,
     )
 
     if ok:
