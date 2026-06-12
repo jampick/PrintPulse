@@ -213,36 +213,50 @@ def _resolve_font(font_arg: str | None) -> str | None:
 def _print_thermal_news(title: str, summary: str, source: str, url: str,
                         translate_lang: str | None, theme: str,
                         dry_run: bool) -> bool:
-    """Print one story to the thermal printer, optionally bilingual."""
+    """Print one story to the thermal printer — one card per language.
+
+    The English card always prints. If a second language is configured,
+    a second card prints from the same template with the translated
+    title and summary.
+    """
     import re
     from datetime import datetime
     from printpulse import thermal, translate
 
     ts = datetime.now().strftime("%m/%d %I:%M %p")
-    translated_title = ""
-    translated_summary = ""
-    if translate.needs_translation(translate_lang):
-        translated_title = translate.translate_text(title, translate_lang) or ""
-        if translated_title and summary:
-            clean = re.sub(r"<[^>]+>", "", summary)
-            translated_summary = translate.translate_text(clean, translate_lang) or ""
-        if not translated_title:
-            ui.error_panel(
-                f"Translation to '{translate_lang}' unavailable; "
-                "printing English only.",
-                theme,
-            )
-    return thermal.print_news_item(
+    ok = thermal.print_news_item(
         title=title,
         summary=summary,
         source=source,
         url=url,
         timestamp=ts,
-        translated_title=translated_title,
-        translated_summary=translated_summary,
         theme=theme,
         dry_run=dry_run,
     )
+
+    if translate.needs_translation(translate_lang):
+        translated_title = translate.translate_text(title, translate_lang)
+        if translated_title:
+            translated_summary = ""
+            clean = re.sub(r"<[^>]+>", "", summary or "").strip()
+            if clean:
+                translated_summary = translate.translate_text(clean, translate_lang) or ""
+            thermal.print_news_item(
+                title=translated_title,
+                summary=translated_summary,
+                source=source,
+                url=url,
+                timestamp=ts,
+                theme=theme,
+                dry_run=dry_run,
+            )
+        else:
+            ui.error_panel(
+                f"Translation to '{translate_lang}' unavailable; "
+                "printed English card only.",
+                theme,
+            )
+    return ok
 
 
 def _check_config_permissions():

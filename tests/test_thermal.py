@@ -63,7 +63,7 @@ class TestWrap:
             assert len(line) <= 10
 
 
-class TestPrintNewsItemBilingual:
+class TestPrintNewsItemCard:
     def _capture(self, monkeypatch, **kwargs):
         sent = []
         monkeypatch.setattr(thermal, "_send_raw",
@@ -71,36 +71,55 @@ class TestPrintNewsItemBilingual:
         assert thermal.print_news_item(**kwargs)
         return sent[0]
 
-    def test_translated_title_printed_after_english(self, monkeypatch):
-        data = self._capture(monkeypatch, title="Hello World",
-                             translated_title="Hola Mundo")
-        assert b"Hello World" in data
-        assert b"Hola Mundo" in data
-        assert data.index(b"Hola Mundo") > data.index(b"Hello World")
-
-    def test_translated_summary_printed(self, monkeypatch):
-        data = self._capture(monkeypatch, title="T", summary="The summary.",
-                             translated_title="T2",
-                             translated_summary="El resumen.")
-        assert b"The summary." in data
-        assert b"El resumen." in data
-
-    def test_translated_summary_skipped_without_english_summary(self, monkeypatch):
-        data = self._capture(monkeypatch, title="T",
-                             translated_title="T2",
-                             translated_summary="El resumen.")
-        assert b"El resumen." not in data
-
-    def test_accents_folded_to_ascii(self, monkeypatch):
-        data = self._capture(monkeypatch, title="Tomorrow",
-                             translated_title="Mañana ¿Qué pasa?")
-        assert b"Manana Que pasa?" in data
-
-    def test_no_translation_unchanged(self, monkeypatch):
+    def test_single_language_card(self, monkeypatch):
         data = self._capture(monkeypatch, title="Just English",
                              summary="Body text.")
         assert b"Just English" in data
         assert b"Body text." in data
+
+    def test_spanish_card_accents_folded_to_ascii(self, monkeypatch):
+        data = self._capture(monkeypatch, title="Mañana ¿Qué pasa?",
+                             summary="La votación se acerca.")
+        assert b"Manana Que pasa?" in data
+        assert b"La votacion se acerca." in data
+
+
+class TestOneCardPerLanguage:
+    def _run(self, monkeypatch, translations, translate_lang="es", summary="The body."):
+        """Run app._print_thermal_news with mocked translation; return cards."""
+        from printpulse import app as app_mod
+        from printpulse import translate as translate_mod
+
+        cards = []
+        monkeypatch.setattr(thermal, "_send_raw",
+                            lambda data, theme="green": cards.append(data) or True)
+        monkeypatch.setattr(translate_mod, "translate_text",
+                            lambda text, lang: translations.get(text))
+        app_mod._print_thermal_news(
+            title="Hello World", summary=summary, source="NYT",
+            url="", translate_lang=translate_lang, theme="green", dry_run=False,
+        )
+        return cards
+
+    def test_two_cards_when_translation_succeeds(self, monkeypatch):
+        cards = self._run(monkeypatch, {
+            "Hello World": "Hola Mundo",
+            "The body.": "El cuerpo.",
+        })
+        assert len(cards) == 2
+        assert b"Hello World" in cards[0] and b"The body." in cards[0]
+        assert b"Hola Mundo" in cards[1] and b"El cuerpo." in cards[1]
+        # The Spanish card must not mix in English content
+        assert b"Hello World" not in cards[1]
+
+    def test_one_card_when_translation_fails(self, monkeypatch):
+        cards = self._run(monkeypatch, {})
+        assert len(cards) == 1
+        assert b"Hello World" in cards[0]
+
+    def test_one_card_when_no_language_selected(self, monkeypatch):
+        cards = self._run(monkeypatch, {"Hello World": "Hola"}, translate_lang=None)
+        assert len(cards) == 1
 
 
 class TestBuildQrData:

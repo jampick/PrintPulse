@@ -824,22 +824,38 @@ def history():
     )
 
 
-def _translated_fields(title: str, summary: str) -> tuple[str, str]:
-    """Translate title/summary per the configured second language.
+def _print_language_cards(title: str, summary: str, source: str,
+                          timestamp: str) -> tuple[bool, int]:
+    """Print one card per language: English always, then a translated card.
 
-    Returns ("", "") when no second language is set or translation fails,
-    so callers print English only.
+    Returns (english_ok, total_cards_printed).
     """
     from printpulse import translate
+    from printpulse.thermal import print_news_item
+
+    ok = print_news_item(
+        title=title,
+        summary=summary,
+        source=source,
+        timestamp=timestamp,
+    )
+    cards = 1 if ok else 0
 
     lang = load_config().get("second_language", "")
-    if not translate.needs_translation(lang):
-        return "", ""
-    t_title = translate.translate_text(title, lang) or ""
-    t_summary = ""
-    if t_title and summary:
-        t_summary = translate.translate_text(summary, lang) or ""
-    return t_title, t_summary
+    if ok and translate.needs_translation(lang):
+        t_title = translate.translate_text(title, lang)
+        if t_title:
+            t_summary = ""
+            if summary:
+                t_summary = translate.translate_text(summary, lang) or ""
+            if print_news_item(
+                title=t_title,
+                summary=t_summary,
+                source=source,
+                timestamp=timestamp,
+            ):
+                cards += 1
+    return ok, cards
 
 
 @app.route("/test_print", methods=["POST"])
@@ -851,29 +867,19 @@ def test_print():
         return jsonify({"ok": False, "message": "Rate limit exceeded. Try again shortly."}), 429
 
     from datetime import datetime
-    from printpulse.thermal import print_news_item
 
     title = "PrintPulse Test Print"
     summary = (
         "This is a test print from the PrintPulse web UI. "
         "If you can read this, your thermal printer is working correctly."
     )
-    translated_title, translated_summary = _translated_fields(title, summary)
-
     timestamp = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
-    ok = print_news_item(
-        title=title,
-        summary=summary,
-        source="PrintPulse Appliance",
-        timestamp=timestamp,
-        translated_title=translated_title,
-        translated_summary=translated_summary,
-    )
-    logger.info("Test print requested: %s", "success" if ok else "failed")
+    ok, cards = _print_language_cards(title, summary, "PrintPulse Appliance", timestamp)
+    logger.info("Test print requested: %s (%d cards)", "success" if ok else "failed", cards)
     if ok:
         message = "Test print sent successfully."
-        if translated_title:
-            message = "Bilingual test print sent successfully."
+        if cards > 1:
+            message = f"Test prints sent successfully ({cards} cards, one per language)."
         return jsonify({"ok": True, "message": message})
     return jsonify({"ok": False, "message": "Print failed — check printer connection."})
 
@@ -888,7 +894,6 @@ def reprint():
         return redirect(url_for("history"))
 
     from printpulse.watch import load_history
-    from printpulse.thermal import print_news_item
 
     try:
         idx = int(request.form.get("index", -1))
@@ -907,14 +912,11 @@ def reprint():
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
 
-    translated_title, _ = _translated_fields(item.get("title", ""), "")
-
-    ok = print_news_item(
+    ok, _cards = _print_language_cards(
         title=item.get("title", "Untitled"),
         summary="(reprint from history)",
         source=item.get("source", ""),
         timestamp=timestamp,
-        translated_title=translated_title,
     )
 
     if ok:
