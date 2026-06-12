@@ -1,8 +1,9 @@
 """Headline translation for bilingual printing.
 
 Translates news titles/summaries with the OpenAI chat API so watch mode
-can print English plus a second language on the same ticket. The openai
-package is imported lazily so the Pi web UI and watch loop boot without it.
+can print English plus a second language on the same ticket. Calls the
+REST API directly via requests — the Pi appliance venv has requests but
+not the openai package, and a translation call doesn't need an SDK.
 
 Failure is always soft: any error (no key, no network, API error) returns
 None and the caller prints English only.
@@ -79,27 +80,34 @@ def translate_text(text: str, lang_code: str) -> str | None:
 
     language = SUPPORTED_LANGUAGES[lang_code.lower()]
     try:
-        from printpulse import require_dependency
-        openai = require_dependency("openai")
-        client = openai.OpenAI(api_key=api_key)
-        response = client.chat.completions.create(
-            model=_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        f"Translate the user's news text into {language}. "
-                        "Reply with only the translation — no quotes, "
-                        "no commentary."
-                    ),
-                },
-                {"role": "user", "content": text[:_MAX_INPUT_CHARS]},
-            ],
-            max_tokens=300,
-            temperature=0.2,
+        import requests
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": _MODEL,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            f"Translate the user's news text into {language}. "
+                            "Reply with only the translation — no quotes, "
+                            "no commentary."
+                        ),
+                    },
+                    {"role": "user", "content": text[:_MAX_INPUT_CHARS]},
+                ],
+                "max_tokens": 300,
+                "temperature": 0.2,
+            },
+            timeout=20,
         )
-        translated = (response.choices[0].message.content or "").strip()
-        return translated or None
+        response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"] or ""
+        return content.strip() or None
     except Exception as e:
         logger.warning("Translation to %s failed: %s", language, e)
         return None

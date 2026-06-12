@@ -25,14 +25,15 @@ class TestNeedsTranslation:
 
 
 class TestTranslateText:
-    def _mock_openai(self, monkeypatch, content="Hola"):
-        mock_openai = MagicMock()
+    def _mock_requests(self, monkeypatch, content="Hola"):
+        mock_requests = MagicMock()
         response = MagicMock()
-        response.choices = [MagicMock()]
-        response.choices[0].message.content = content
-        mock_openai.OpenAI.return_value.chat.completions.create.return_value = response
-        monkeypatch.setitem(sys.modules, "openai", mock_openai)
-        return mock_openai
+        response.json.return_value = {
+            "choices": [{"message": {"content": content}}],
+        }
+        mock_requests.post.return_value = response
+        monkeypatch.setitem(sys.modules, "requests", mock_requests)
+        return mock_requests
 
     def test_empty_text_returns_none(self):
         assert translate.translate_text("", "es") is None
@@ -51,28 +52,32 @@ class TestTranslateText:
 
     def test_successful_translation(self, monkeypatch):
         monkeypatch.setattr(translate, "_get_api_key", lambda: "sk-test")
-        mock = self._mock_openai(monkeypatch, "Hola Mundo")
+        mock = self._mock_requests(monkeypatch, "Hola Mundo")
         assert translate.translate_text("Hello World", "es") == "Hola Mundo"
-        call = mock.OpenAI.return_value.chat.completions.create.call_args
-        assert "Spanish" in call.kwargs["messages"][0]["content"]
+        call = mock.post.call_args
+        assert "Spanish" in call.kwargs["json"]["messages"][0]["content"]
 
     def test_api_error_returns_none(self, monkeypatch):
         monkeypatch.setattr(translate, "_get_api_key", lambda: "sk-test")
-        mock_openai = MagicMock()
-        mock_openai.OpenAI.return_value.chat.completions.create.side_effect = \
-            RuntimeError("boom")
-        monkeypatch.setitem(sys.modules, "openai", mock_openai)
+        mock_requests = MagicMock()
+        mock_requests.post.side_effect = RuntimeError("boom")
+        monkeypatch.setitem(sys.modules, "requests", mock_requests)
+        assert translate.translate_text("Hello", "es") is None
+
+    def test_http_error_returns_none(self, monkeypatch):
+        monkeypatch.setattr(translate, "_get_api_key", lambda: "sk-test")
+        mock = self._mock_requests(monkeypatch)
+        mock.post.return_value.raise_for_status.side_effect = RuntimeError("401")
         assert translate.translate_text("Hello", "es") is None
 
     def test_empty_response_returns_none(self, monkeypatch):
         monkeypatch.setattr(translate, "_get_api_key", lambda: "sk-test")
-        self._mock_openai(monkeypatch, "")
+        self._mock_requests(monkeypatch, "")
         assert translate.translate_text("Hello", "es") is None
 
     def test_long_input_truncated(self, monkeypatch):
         monkeypatch.setattr(translate, "_get_api_key", lambda: "sk-test")
-        mock = self._mock_openai(monkeypatch, "Hola")
+        mock = self._mock_requests(monkeypatch, "Hola")
         translate.translate_text("x" * 5000, "es")
-        call = mock.OpenAI.return_value.chat.completions.create.call_args
-        sent = call.kwargs["messages"][1]["content"]
+        sent = mock.post.call_args.kwargs["json"]["messages"][1]["content"]
         assert len(sent) <= translate._MAX_INPUT_CHARS
