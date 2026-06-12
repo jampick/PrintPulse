@@ -209,16 +209,21 @@ def print_text(text: str, theme: str = "green", dry_run: bool = False) -> bool:
 
 def print_news_item(title: str, summary: str = "", source: str = "",
                     url: str = "", timestamp: str = "",
+                    translated_title: str = "", translated_summary: str = "",
                     theme: str = "green", dry_run: bool = False) -> bool:
     """Print a formatted news story to the thermal printer.
 
-    Used for watch mode with RSS/Atom feeds.
+    Used for watch mode with RSS/Atom feeds. When translated_title /
+    translated_summary are given, they print below their English
+    counterparts for bilingual output.
     Returns True on success.
     """
     # Sanitize all text fields for thermal printer compatibility
     title = _sanitize_for_thermal(title)
     summary = _sanitize_for_thermal(summary)
     source = _sanitize_for_thermal(source)
+    translated_title = _sanitize_for_thermal(translated_title)
+    translated_summary = _sanitize_for_thermal(translated_summary)
 
     if dry_run:
         ui.retro_panel(
@@ -250,6 +255,9 @@ def print_news_item(title: str, summary: str = "", source: str = "",
     wrapped_title = _wrap(title, LINE_WIDTH)
     data += wrapped_title.encode('utf-8', errors='replace') + b'\n'
     data += CMD_NORMAL_SIZE
+    # Translated headline — bold, normal height, right under the English one
+    if translated_title:
+        data += _wrap(translated_title, LINE_WIDTH).encode('utf-8', errors='replace') + b'\n'
     data += CMD_BOLD_OFF
     data += SEPARATOR
 
@@ -260,6 +268,10 @@ def print_news_item(title: str, summary: str = "", source: str = "",
         if clean:
             wrapped_summary = _wrap(clean, LINE_WIDTH)
             data += wrapped_summary.encode('utf-8', errors='replace') + b'\n'
+            clean_translated = re.sub(r'<[^>]+>', '', translated_summary).strip()
+            if clean_translated:
+                data += b'\n'
+                data += _wrap(clean_translated, LINE_WIDTH).encode('utf-8', errors='replace') + b'\n'
             data += SEPARATOR
 
     # Source

@@ -53,6 +53,11 @@ def main():
     theme = config.get("theme", "green")
     argv.extend(["--theme", theme])
 
+    # Second language (bilingual printing); "en"/"" = English only
+    second_language = config.get("second_language", "")
+    if second_language and second_language != "en":
+        argv.extend(["--translate-to", second_language])
+
     # Quiet hours (only in scheduled mode)
     if print_mode == "scheduled":
         quiet_start = config.get("quiet_start", "22:00")

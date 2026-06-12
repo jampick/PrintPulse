@@ -31,6 +31,8 @@ def default_config() -> dict:
         "quiet_start": "22:00",
         "quiet_end": "08:00",
         "quiet_wake_mode": "latest",
+        "second_language": "es",  # "" or "en" = English only
+        "openai_api_key": "",     # used for translation
         "auth_user": "",
         "auth_hash": "",
         "secret_key": "",

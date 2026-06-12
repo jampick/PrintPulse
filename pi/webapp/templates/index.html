@@ -279,6 +279,24 @@
                            value="{{ config.printer_device }}">
                 </div>
             </div>
+            <div class="row">
+                <div>
+                    <label for="second_language">Print languages:</label>
+                    <select name="second_language" id="second_language" onchange="updateLanguage()">
+                        <option value="" {% if not config.second_language or config.second_language == 'en' %}selected{% endif %}>English only</option>
+                        {% for code, name in languages.items() %}
+                        <option value="{{ code }}" {% if config.second_language == code %}selected{% endif %}>English + {{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="openai-key-field" style="{% if not config.second_language or config.second_language == 'en' %}opacity:0.4;{% endif %}">
+                    <label for="openai_api_key">OpenAI API key:</label>
+                    <input type="password" name="openai_api_key" id="openai_api_key" value=""
+                           autocomplete="off"
+                           placeholder="{% if config.openai_api_key %}(saved — leave blank to keep){% else %}sk-...{% endif %}">
+                </div>
+            </div>
+            <div class="help">Stories print in English plus the selected language (translated via OpenAI). If translation fails, English still prints.</div>
         </div>
 
         <div class="panel">
@@ -380,6 +398,12 @@
 
     <!-- Live status polling -->
     <script>
+        function updateLanguage() {
+            var lang = document.getElementById('second_language').value;
+            var keyField = document.getElementById('openai-key-field');
+            keyField.style.opacity = lang ? '1' : '0.4';
+        }
+
         function updatePrintMode() {
             var mode = document.getElementById('print_mode').value;
             var qt = document.getElementById('quiet-times');

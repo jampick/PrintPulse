@@ -148,6 +148,19 @@ def _build_parser() -> argparse.ArgumentParser:
              "recent item per source (default), 'all' prints every queued item, "
              "'next' prints only the oldest queued item.",
     )
+    parser.add_argument(
+        "--translate-to",
+        metavar="LANG",
+        default=None,
+        help="Also print each story in this language on the thermal printer "
+             "(es, fr, de, it, pt, nl). 'en' or omitted = English only.",
+    )
+    parser.add_argument(
+        "--reprint-last",
+        action="store_true",
+        help="Reprint the most recent story from print history to the "
+             "thermal printer, then exit",
+    )
     # ── Letter mode ──
     parser.add_argument(
         "--letter",
@@ -195,6 +208,41 @@ def _resolve_font(font_arg: str | None) -> str | None:
             return font_id
 
     return None
+
+
+def _print_thermal_news(title: str, summary: str, source: str, url: str,
+                        translate_lang: str | None, theme: str,
+                        dry_run: bool) -> bool:
+    """Print one story to the thermal printer, optionally bilingual."""
+    import re
+    from datetime import datetime
+    from printpulse import thermal, translate
+
+    ts = datetime.now().strftime("%m/%d %I:%M %p")
+    translated_title = ""
+    translated_summary = ""
+    if translate.needs_translation(translate_lang):
+        translated_title = translate.translate_text(title, translate_lang) or ""
+        if translated_title and summary:
+            clean = re.sub(r"<[^>]+>", "", summary)
+            translated_summary = translate.translate_text(clean, translate_lang) or ""
+        if not translated_title:
+            ui.error_panel(
+                f"Translation to '{translate_lang}' unavailable; "
+                "printing English only.",
+                theme,
+            )
+    return thermal.print_news_item(
+        title=title,
+        summary=summary,
+        source=source,
+        url=url,
+        timestamp=ts,
+        translated_title=translated_title,
+        translated_summary=translated_summary,
+        theme=theme,
+        dry_run=dry_run,
+    )
 
 
 def _check_config_permissions():
@@ -284,6 +332,40 @@ def run(argv: list[str]):
 
     # ─── SPLASH ───
     ui.show_splash(theme)
+
+    # ─── TRANSLATION LANGUAGE GUARD ───
+    if args.translate_to:
+        from printpulse.translate import SUPPORTED_LANGUAGES, needs_translation
+        lang = args.translate_to.lower()
+        if not needs_translation(lang) and lang != "en":
+            ui.error_panel(
+                f"Unsupported language '{args.translate_to}'. "
+                f"Choose from: en, {', '.join(sorted(SUPPORTED_LANGUAGES))}",
+                theme,
+            )
+            return
+
+    # ─── REPRINT LAST STORY ───
+    if args.reprint_last:
+        from printpulse import watch
+        history = watch.load_history()
+        if not history:
+            ui.error_panel("No print history found — nothing to reprint.", theme)
+            return
+        last = history[-1]
+        ui.retro_panel("REPRINT", f"Reprinting: {last.get('title', '')[:64]}", theme)
+        ok = _print_thermal_news(
+            title=last.get("title", ""),
+            summary=last.get("summary", ""),
+            source=last.get("source", ""),
+            url=last.get("link", ""),
+            translate_lang=args.translate_to,
+            theme=theme,
+            dry_run=config.dry_run,
+        )
+        if ok:
+            ui.success_message("Reprint sent.", theme)
+        return
 
     # ─── LETTER MODE GUARD ───
     if args.letter and args.printer == "thermal":
@@ -425,8 +507,6 @@ def run(argv: list[str]):
             """Plot a single text item through the configured printer(s)."""
             # ── THERMAL PRINTER ──
             if use_thermal:
-                from datetime import datetime
-                ts = datetime.now().strftime("%m/%d %I:%M %p")
                 title = text
                 summary = ""
                 source = ""
@@ -444,12 +524,12 @@ def run(argv: list[str]):
                                 from urllib.parse import urlparse
                                 source = urlparse(link).netloc
                         url = getattr(entry, "link", "")
-                thermal.print_news_item(
+                _print_thermal_news(
                     title=title,
                     summary=summary,
                     source=source,
                     url=url,
-                    timestamp=ts,
+                    translate_lang=args.translate_to,
                     theme=theme,
                     dry_run=config.dry_run,
                 )

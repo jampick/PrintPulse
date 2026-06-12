@@ -181,6 +181,55 @@ class TestThemeValidation:
         assert len(errors) > 0
 
 
+# ─── Second Language Validation ─────────────────────────────────────────────
+
+
+class TestSecondLanguageValidation:
+    def _form(self, lang="", key=""):
+        return FakeForm(
+            feeds="", interval="300", max_prints="3",
+            theme="green", printer_device="/dev/usb/lp0",
+            second_language=lang, openai_api_key=key,
+        )
+
+    def test_empty_valid(self):
+        data, errors = validate_save_input(self._form(""))
+        assert not errors
+        assert data["second_language"] == ""
+
+    def test_spanish_valid(self):
+        data, errors = validate_save_input(self._form("es"))
+        assert not errors
+        assert data["second_language"] == "es"
+
+    def test_english_passthrough(self):
+        data, errors = validate_save_input(self._form("en"))
+        assert not errors
+        assert data["second_language"] == "en"
+
+    def test_unsupported_language_rejected(self):
+        _, errors = validate_save_input(self._form("zz"))
+        assert any("language" in e.lower() for e in errors)
+
+    def test_valid_api_key_accepted(self):
+        data, errors = validate_save_input(self._form("es", "sk-proj-abc123_XYZ-456"))
+        assert not errors
+        assert data["openai_api_key"] == "sk-proj-abc123_XYZ-456"
+
+    def test_blank_api_key_kept_blank(self):
+        data, errors = validate_save_input(self._form("es", ""))
+        assert not errors
+        assert data["openai_api_key"] == ""
+
+    def test_malformed_api_key_rejected(self):
+        _, errors = validate_save_input(self._form("es", "sk key with spaces"))
+        assert any("key" in e.lower() for e in errors)
+
+    def test_script_injection_in_key_rejected(self):
+        _, errors = validate_save_input(self._form("es", "<script>x</script>"))
+        assert len(errors) > 0
+
+
 # ─── Printer Device Validation ──────────────────────────────────────────────
 
 

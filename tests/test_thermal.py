@@ -1,5 +1,6 @@
 """Tests for printpulse.thermal module."""
 
+from printpulse import thermal
 from printpulse.thermal import _sanitize_for_thermal, _wrap, _build_qr_data, LINE_WIDTH
 
 
@@ -60,6 +61,46 @@ class TestWrap:
         wrapped = _wrap(text, width=10)
         for line in wrapped.split('\n'):
             assert len(line) <= 10
+
+
+class TestPrintNewsItemBilingual:
+    def _capture(self, monkeypatch, **kwargs):
+        sent = []
+        monkeypatch.setattr(thermal, "_send_raw",
+                            lambda data, theme="green": sent.append(data) or True)
+        assert thermal.print_news_item(**kwargs)
+        return sent[0]
+
+    def test_translated_title_printed_after_english(self, monkeypatch):
+        data = self._capture(monkeypatch, title="Hello World",
+                             translated_title="Hola Mundo")
+        assert b"Hello World" in data
+        assert b"Hola Mundo" in data
+        assert data.index(b"Hola Mundo") > data.index(b"Hello World")
+
+    def test_translated_summary_printed(self, monkeypatch):
+        data = self._capture(monkeypatch, title="T", summary="The summary.",
+                             translated_title="T2",
+                             translated_summary="El resumen.")
+        assert b"The summary." in data
+        assert b"El resumen." in data
+
+    def test_translated_summary_skipped_without_english_summary(self, monkeypatch):
+        data = self._capture(monkeypatch, title="T",
+                             translated_title="T2",
+                             translated_summary="El resumen.")
+        assert b"El resumen." not in data
+
+    def test_accents_folded_to_ascii(self, monkeypatch):
+        data = self._capture(monkeypatch, title="Tomorrow",
+                             translated_title="Mañana ¿Qué pasa?")
+        assert b"Manana Que pasa?" in data
+
+    def test_no_translation_unchanged(self, monkeypatch):
+        data = self._capture(monkeypatch, title="Just English",
+                             summary="Body text.")
+        assert b"Just English" in data
+        assert b"Body text." in data
 
 
 class TestBuildQrData:

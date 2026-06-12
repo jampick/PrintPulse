@@ -39,6 +39,7 @@ from flask import (
     session, abort, flash, get_flashed_messages, g,
 )
 from pi.appliance import load_config, save_config, verify_password
+from printpulse.translate import SUPPORTED_LANGUAGES
 
 app = Flask(__name__)
 
@@ -570,6 +571,25 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         )
         auto_update_interval = 24
 
+    # --- Second language (bilingual printing) ---
+    second_language = form.get("second_language", "").strip().lower()
+    if second_language and second_language != "en" \
+            and second_language not in SUPPORTED_LANGUAGES:
+        errors.append(
+            "Second language must be one of: "
+            f"{', '.join(sorted(SUPPORTED_LANGUAGES))} (or none)."
+        )
+        second_language = ""
+
+    # --- OpenAI API key (blank = keep existing) ---
+    openai_api_key = form.get("openai_api_key", "").strip()
+    if openai_api_key and (
+        len(openai_api_key) > 256
+        or not re.match(r"^[A-Za-z0-9_\-]+$", openai_api_key)
+    ):
+        errors.append("OpenAI API key looks invalid.")
+        openai_api_key = ""
+
     # --- Printer device ---
     printer_device = form.get("printer_device", "/dev/usb/lp0").strip()
     if len(printer_device) > 64:
@@ -595,6 +615,8 @@ def validate_save_input(form) -> tuple[dict | None, list[str]]:
         "quiet_start": quiet_start,
         "quiet_end": quiet_end,
         "quiet_wake_mode": quiet_wake_mode,
+        "second_language": second_language,
+        "openai_api_key": openai_api_key,
         "auto_update_enabled": auto_update_enabled,
         "auto_update_interval": auto_update_interval,
     }, []
@@ -670,6 +692,7 @@ def index():
         errors=[],
         version=_APP_VERSION,
         timezone=_get_system_timezone(),
+        languages=SUPPORTED_LANGUAGES,
     )
 
 
@@ -696,6 +719,7 @@ def save():
             errors=errors,
             version=_APP_VERSION,
             timezone=_get_system_timezone(),
+            languages=SUPPORTED_LANGUAGES,
         )
 
     config = load_config()
@@ -708,6 +732,10 @@ def save():
     config["quiet_start"] = validated["quiet_start"]
     config["quiet_end"] = validated["quiet_end"]
     config["quiet_wake_mode"] = validated["quiet_wake_mode"]
+    config["second_language"] = validated["second_language"]
+    # Blank key field means "keep the saved key"
+    if validated["openai_api_key"]:
+        config["openai_api_key"] = validated["openai_api_key"]
     config["auto_update_enabled"] = validated["auto_update_enabled"]
     config["auto_update_interval"] = validated["auto_update_interval"]
     save_config(config)
