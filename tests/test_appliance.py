@@ -26,6 +26,11 @@ class TestDefaultConfig:
         assert "printer_device" in cfg
         assert "print_mode" in cfg
 
+    def test_quiet_tz_defaults_to_empty_string(self):
+        cfg = default_config()
+        assert "quiet_tz" in cfg
+        assert cfg["quiet_tz"] == ""
+
     def test_has_auth_fields(self):
         cfg = default_config()
         assert "auth_user" in cfg

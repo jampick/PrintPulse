@@ -202,12 +202,21 @@ def mark_seen(items: list[dict]):
     _save_seen(seen)
 
 
-def _is_in_quiet_hours(quiet_start: str, quiet_end: str) -> bool:
+def _is_in_quiet_hours(quiet_start: str, quiet_end: str, tz: str | None = None) -> bool:
     """Check if current time falls within quiet hours.
 
     Handles midnight crossover (e.g. 22:00–08:00).
+    If *tz* is an IANA timezone name (e.g. "America/New_York") the check is
+    performed in that timezone; otherwise the system local time is used.
     """
-    now = datetime.now().time()
+    if tz:
+        try:
+            from zoneinfo import ZoneInfo
+            now = datetime.now(ZoneInfo(tz)).time()
+        except Exception:
+            now = datetime.now().time()
+    else:
+        now = datetime.now().time()
     start_h, start_m = int(quiet_start[:2]), int(quiet_start[3:5])
     end_h, end_m = int(quiet_end[:2]), int(quiet_end[3:5])
 
@@ -239,6 +248,7 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                    plot_callback, theme: str = "green",
                    quiet_start: str | None = None,
                    quiet_end: str | None = None,
+                   quiet_tz: str | None = None,
                    quiet_wake_mode: str = "latest"):
     """Main watch loop. Polls feeds and calls plot_callback(text) for each new item."""
     from rich.live import Live
@@ -301,7 +311,7 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
 
                 # ── QUIET QUEUE: flush items saved during quiet hours ──
                 quiet_queue = _load_quiet_queue()
-                if quiet_queue and not (use_quiet and _is_in_quiet_hours(quiet_start, quiet_end)):
+                if quiet_queue and not (use_quiet and _is_in_quiet_hours(quiet_start, quiet_end, quiet_tz)):
                     live.stop()
                     if quiet_wake_mode == "latest":
                         _save_quiet_queue([])  # Clear entire queue
@@ -354,7 +364,7 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                         mark_seen([{"id": r["id"], "title": r["title"]}])
                     _save_retry_queue(retryable)
 
-                if retryable and not (use_quiet and _is_in_quiet_hours(quiet_start, quiet_end)):
+                if retryable and not (use_quiet and _is_in_quiet_hours(quiet_start, quiet_end, quiet_tz)):
                     live.stop()
                     ui.retro_panel("RETRY", f"Retrying {len(retryable)} failed item(s).", theme)
                     for r_item in retryable:
@@ -422,7 +432,7 @@ def run_watch_loop(feed_urls: list[str], interval: int, max_prints: int,
                 # Stop Live temporarily to print story content normally
                 if items:
                     # Check quiet hours — persist to queue and mark seen so they're not lost
-                    if use_quiet and _is_in_quiet_hours(quiet_start, quiet_end):
+                    if use_quiet and _is_in_quiet_hours(quiet_start, quiet_end, quiet_tz):
                         _enqueue_quiet_items(items)
                         mark_seen(items)
                         total_queued = len(_load_quiet_queue())
